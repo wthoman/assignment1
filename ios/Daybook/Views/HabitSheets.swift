@@ -57,7 +57,7 @@ struct DetailsSheet: View {
                                 Button { m.addPhoto(h.id) } label: { Ico(.camera); Text("Add photo") }.buttonStyle(.btn(.line))
                             }
                         } else {
-                            Button { withAnimation { m.check(h.id) } } label: { Ico(.check); Text("Check in") }.buttonStyle(.btn)
+                            Button { withAnimation { m.check(h.id) } } label: { Ico(h.proof ? .camera : .check); Text("Check in") }.buttonStyle(.btn)
                         }
                         if let g {
                             Button { m.openGroup(g.id) } label: { Ico(.groups, 17); Text("Open group") }.buttonStyle(.btn(.line))
@@ -178,7 +178,7 @@ struct CreateHabitSheet: View {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text("Ask for a photo").font(.sans(15, .semibold)).foregroundStyle(c.ink)
-                                Text("Offer a photo when you check off").font(.sans(12.5)).foregroundStyle(c.ink3)
+                                Text("Take a photo to check it off").font(.sans(12.5)).foregroundStyle(c.ink3)
                             }
                             Spacer()
                             Switch(on: s.proof)
@@ -292,6 +292,7 @@ struct ProofSheet: View {
     @State private var flash = 0.0
     var body: some View {
         if let s = m.sheet, let h = m.H(s.id) {
+            let done = m.isDone(h, "me")
             VStack(spacing: 0) {
                 SheetHead {
                     VStack(alignment: .leading, spacing: 6) {
@@ -300,11 +301,16 @@ struct ProofSheet: View {
                     }
                 }
                 SheetBody {
+                    if !done {
+                        Text("Take a photo to check this off. It’s added to your story once it’s saved.")
+                            .font(.sans(13.5)).foregroundStyle(c.ink2).padding(.bottom, 12)
+                    }
                     ZStack {
-                        if s.shot {
-                            RadialGradient(stops: [.init(color: Brand.wine3, location: 0), .init(color: Brand.wine, location: 0.45), .init(color: Brand.wineInk, location: 0.9)],
-                                           center: UnitPoint(x: 0.5, y: 0.34), startRadius: 0, endRadius: 220)
-                            HIcon(h.ic, 70, 1).foregroundStyle(Color(red: 1, green: 236 / 255, blue: 226 / 255).opacity(0.9))
+                        if let photo = s.photo {
+                            Color.black
+                            Image(uiImage: photo).resizable().scaledToFill()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+                                .accessibilityLabel("Your photo")
                         } else {
                             LinearGradient(colors: [Color(hex: 0x2B2224), Color(hex: 0x100A0C)], startPoint: UnitPoint(x: 0.3, y: 0), endPoint: UnitPoint(x: 0.7, y: 1))
                             Ico(.camera, 48).foregroundStyle(.white.opacity(0.35))
@@ -316,17 +322,27 @@ struct ProofSheet: View {
                         Color.white.opacity(flash).allowsHitTesting(false)
                     }
                     .frame(height: 270)
+                    .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .onChange(of: s.flash) { _, _ in
                         flash = 1
                         withAnimation(.easeOut(duration: 0.5)) { flash = 0 }
                     }
+                    if let err = s.photoError {
+                        HStack(alignment: .top, spacing: 6) {
+                            Ico(.info, 14).padding(.top, 1)
+                            Text(err).font(.sans(13, .medium))
+                        }
+                        .foregroundStyle(c.acc)
+                        .padding(.top, 10)
+                        .accessibilityElement(children: .combine)
+                    }
                     if s.shot {
-                        Field(label: "Caption (optional)", placeholder: "Day \(m.streak(h, "me"))", text: m.field(\.caption)).padding(.top, 10)
+                        Field(label: "Caption (optional)", placeholder: "Day \(m.streak(h, "me") + (done ? 0 : 1))", text: m.field(\.caption)).padding(.top, 10)
                         GeometryReader { g in
                             HStack(spacing: 8) {
-                                Button("Retake") { m.retake() }.buttonStyle(.btn(.line)).frame(width: (g.size.width - 8) / 3)
-                                Button("Post photo") { m.postProof(h.id) }.buttonStyle(.btn)
+                                Button("Retake") { m.retake(); m.shoot() }.buttonStyle(.btn(.line)).frame(width: (g.size.width - 8) / 3)
+                                Button(s.saving ? "Saving…" : "Post photo") { m.postProof(h.id) }.buttonStyle(.btn).disabled(s.saving)
                             }
                         }
                         .frame(height: 48)
@@ -341,9 +357,13 @@ struct ProofSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 16).padding(.bottom, 4)
                         .accessibilityLabel("Take photo")
-                        Button("Skip photo") { m.askSkip(h.id) }.buttonStyle(.btn(.ghost))
+                        Button(done ? "Skip photo" : "Not now") { m.askSkip(h.id) }.buttonStyle(.btn(.ghost))
                     }
                 }
+            }
+            .fullScreenCover(isPresented: Binding(get: { m.sheet?.showCamera ?? false }, set: { m.sheet?.showCamera = $0 })) {
+                CameraPicker(onPhoto: { m.captured($0) }, onCancel: { m.sheet?.showCamera = false })
+                    .ignoresSafeArea()
             }
         }
     }
@@ -387,9 +407,15 @@ struct PostSheet: View {
                 SheetBody {
                     if pic {
                         ZStack(alignment: .topLeading) {
-                            PhotoFill(floorCell: 36, floorHeight: 130, floorOpacity: 0.35)
-                            HIcon(h.ic, 96, 0.9).foregroundStyle(Color(red: 1, green: 236 / 255, blue: 226 / 255).opacity(0.85))
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            if p == "me", let item = m.storyItem(for: h.id), let img = m.storyImage(item) {
+                                Color.black
+                                Image(uiImage: img).resizable().scaledToFill()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+                            } else {
+                                PhotoFill(floorCell: 36, floorHeight: 130, floorOpacity: 0.35)
+                                HIcon(h.ic, 96, 0.9).foregroundStyle(Color(red: 1, green: 236 / 255, blue: 226 / 255).opacity(0.85))
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
                             Text(m.G(h.group)?.name ?? "Just me").font(.mono(9.5)).tracking(1.33).textCase(.uppercase)
                                 .foregroundStyle(Color(hex: 0xF6E6E0))
                                 .padding(.vertical, 4).padding(.horizontal, 7)

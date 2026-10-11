@@ -20,6 +20,11 @@ struct ProfileView: View {
             NavBar(title: "Profile") { IconBtn(label: "Settings", action: { m.push(.settings) }) { Ico(.gear) } }
             VStack(spacing: 0) {
                 Av(p: "me", size: 104)
+                    .overlay { if !m.story.isEmpty { StoryRing() } }
+                    .contentShape(Circle())
+                    .onTapGesture { m.openStory() }
+                    .accessibilityAddTraits(m.story.isEmpty ? [] : .isButton)
+                    .accessibilityHint(m.story.isEmpty ? "" : "Shows your story")
                     .overlay(alignment: .topTrailing) {
                         Button { m.avatarPicker() } label: {
                             Ico(.edit, 13).foregroundStyle(Brand.onWine).frame(width: 30, height: 30)

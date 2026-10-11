@@ -15,7 +15,7 @@ struct TodayView: View {
                     .buttonStyle(.press)
                     .accessibilityLabel("Profile")
             }
-            Text("Good evening, \(Text("Shannon").fontWeight(.semibold).foregroundStyle(c.acc)).")
+            Text("Good evening, \(Text(m.person("me").name).fontWeight(.semibold).foregroundStyle(c.acc)).")
                 .font(.sans(15)).foregroundStyle(c.ink2)
                 .padding(.top, 4).padding(.horizontal, 2)
             WeekStrip().padding(.top, 14)
@@ -368,8 +368,12 @@ struct PersonTile: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
                     if d && m.hasPhoto(h, p) {
-                        PhotoFill(floorCell: 16, floorHeight: 40, floorOpacity: 0.28, center: UnitPoint(x: 0.5, y: 0.3))
-                        HIcon(h.ic, 26, 1.3).foregroundStyle(Color(red: 1, green: 236 / 255, blue: 226 / 255).opacity(0.88))
+                        if me, let item = m.storyItem(for: h.id), let img = m.storyImage(item) {
+                            Image(uiImage: img).resizable().scaledToFill().frame(width: 78, height: 98).clipped()
+                        } else {
+                            PhotoFill(floorCell: 16, floorHeight: 40, floorOpacity: 0.28, center: UnitPoint(x: 0.5, y: 0.3))
+                            HIcon(h.ic, 26, 1.3).foregroundStyle(Color(red: 1, green: 236 / 255, blue: 226 / 255).opacity(0.88))
+                        }
                         Av(p: p, size: 20).background(Circle().stroke(Brand.wineInk, lineWidth: 3))
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading).padding(5)
                     } else if d {

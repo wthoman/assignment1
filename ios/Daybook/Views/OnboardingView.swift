@@ -115,16 +115,17 @@ private struct ObHeading: View {
 private struct AccountStep: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
-    @State private var name = "Shannon"
-    @State private var email = ""
-    @State private var password = ""
     var body: some View {
+        @Bindable var m = m
         ObScaffold {
             ObHeading(eyebrow: "Create account", lead: "Take your ", em: "seat.", sub: "So your friends can find you.")
             VStack(spacing: 8) {
-                Field(label: "Name", text: $name)
-                Field(label: "Email", placeholder: "you@school.edu", text: $email)
-                Field(label: "Password", placeholder: "At least 8 characters", text: $password, secure: true)
+                Field(label: "Name", placeholder: "Your name", text: $m.obName,
+                      error: m.obAttempted ? m.obNameError : nil, capitalization: .words)
+                Field(label: "Email", placeholder: "you@school.edu", text: $m.obEmail,
+                      error: m.obAttempted ? m.obEmailError : nil, keyboard: .emailAddress, capitalization: .never)
+                Field(label: "Password", placeholder: "At least 8 characters", text: $m.obPassword, secure: true,
+                      error: m.obAttempted ? m.obPasswordError : nil)
             }
             Lbl(text: "Pick your avatar")
             Bleed(inset: 22, spacing: 8) {
@@ -139,7 +140,10 @@ private struct AccountStep: View {
                 }
             }
         } foot: {
-            Button("Continue") { m.obNext() }.buttonStyle(.btn)
+            if m.obAttempted && (m.obNameError != nil || m.obEmailError != nil || m.obPasswordError != nil) {
+                ValidationNote(text: "Fill in the highlighted details to continue.")
+            }
+            Button("Continue") { withAnimation(.easeOut(duration: 0.2)) { m.obAccountContinue() } }.buttonStyle(.btn)
         }
     }
 }
@@ -168,6 +172,9 @@ private struct GoalsStep: View {
                 }
             }
         } foot: {
+            if m.obGoals.isEmpty {
+                ValidationNote(text: "Pick at least one goal to continue.")
+            }
             Button("Continue · \(m.obGoals.count) selected") { m.obNext() }.buttonStyle(.btn).disabled(m.obGoals.isEmpty)
         }
     }
@@ -195,6 +202,22 @@ private struct PeopleStep: View {
         } foot: {
             Button("Start my first day") { m.obFinish() }.buttonStyle(.btn)
         }
+    }
+}
+
+/// Message above Continue when the step isn't complete yet.
+private struct ValidationNote: View {
+    @Environment(\.pal) private var c
+    let text: String
+    var body: some View {
+        HStack(spacing: 6) {
+            Ico(.info, 14)
+            Text(text).font(.sans(13, .semibold))
+        }
+        .foregroundStyle(c.acc)
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 

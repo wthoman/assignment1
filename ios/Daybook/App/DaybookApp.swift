@@ -31,8 +31,17 @@ struct RootView: View {
         .environment(\.pal, pal)
         .tint(pal.acc)
         .preferredColorScheme(lightStatus ? .dark : .light)
+        .alert("Undo this check-in?", isPresented: Binding(get: { m.pendingUncheck != nil }, set: { if !$0 { m.pendingUncheck = nil } }),
+               presenting: m.pendingUncheck.flatMap { m.H($0) }) { _ in
+            Button("Undo check-in", role: .destructive) { withAnimation { m.confirmUncheck() } }
+            Button("Keep it", role: .cancel) { m.pendingUncheck = nil }
+        } message: { h in
+            Text("\(h.name) will be marked as not done for today.")
+        }
     }
-    private var isRecap: Bool { if case .recap = m.overlay { return true }; return false }
+    private var isRecap: Bool {
+        switch m.overlay { case .recap, .story: return true; default: return false }
+    }
 }
 
 // MARK: - App shell
@@ -303,6 +312,8 @@ struct OverlayHost: View {
                 RecapCurtain().id(id).transition(.opacity)
             case .celebrate(let gid):
                 CelebrateView(gid: gid).transition(.opacity)
+            case .story(let id):
+                StoryViewer().id(id).transition(.opacity)
             case nil:
                 EmptyView()
             }

@@ -266,8 +266,26 @@ struct Field: View {
     @Binding var text: String
     var secure = false
     var compact = false
+    var error: String? = nil
+    var keyboard: UIKeyboardType = .default
+    var capitalization: TextInputAutocapitalization? = nil
     @FocusState private var focused: Bool
     var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            field
+            if let error {
+                HStack(alignment: .top, spacing: 5) {
+                    Ico(.info, 13).padding(.top, 1)
+                    Text(error).font(.sans(12.5, .medium))
+                }
+                .foregroundStyle(c.acc)
+                .padding(.horizontal, 4)
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    private var field: some View {
         VStack(alignment: .leading, spacing: 2) {
             if let label {
                 Text(label).font(.mono(10)).tracking(1.4).textCase(.uppercase).foregroundStyle(c.ink3)
@@ -283,13 +301,15 @@ struct Field: View {
             .foregroundStyle(c.ink)
             .tint(c.acc)
             .autocorrectionDisabled()
+            .keyboardType(keyboard)
+            .textInputAutocapitalization(capitalization)
             .focused($focused)
         }
         .padding(.horizontal, compact ? 12 : 14)
         .padding(.vertical, compact ? 8 : 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(c.card))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(focused ? c.acc : c.line, lineWidth: focused ? 1.5 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(focused || error != nil ? c.acc : c.line, lineWidth: focused || error != nil ? 1.5 : 1))
         .contentShape(Rectangle())
         .onTapGesture { focused = true }
     }

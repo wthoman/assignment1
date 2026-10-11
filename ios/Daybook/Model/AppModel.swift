@@ -36,6 +36,10 @@ struct SheetState {
     var shot = false
     var flash = 0
     var caption = ""
+    var photo: UIImage? = nil
+    var showCamera = false
+    var photoError: String? = nil
+    var saving = false
     // comments
     var text = ""
     // avatar / invite friends / profile
@@ -52,7 +56,7 @@ struct ToastState: Identifiable {
     let undo: (() -> Void)?
 }
 
-enum Overlay: Equatable { case recap(UUID), celebrate(String) }
+enum Overlay: Equatable { case recap(UUID), celebrate(String), story(UUID) }
 
 @MainActor @Observable
 final class AppModel {
@@ -60,6 +64,10 @@ final class AppModel {
     var mode: Mode = .onboard
     enum Mode { case onboard, app }
     var step = 0
+    var obName = ""
+    var obEmail = ""
+    var obPassword = ""
+    var obAttempted = false
     var obGoals: Set<String> = ["water", "move", "read"]
     var obAdded: Set<String> = ["mina", "preston", "caitlyn"]
     var tab: Tab = .today
@@ -90,6 +98,10 @@ final class AppModel {
     var settings: [String: Bool] = ["notif": true, "sound": true, "haptics": true, "share": true]
     var contactInvited: Set<Int> = []
     var theme: ThemeName = .paper
+    var story: [StoryItem] = []
+    /// Habit waiting on the "undo check-in?" confirmation.
+    var pendingUncheck: String? = nil
+    private let storyStore = StoryStore()
 
     // chrome
     var sheet: SheetState? = nil
@@ -101,6 +113,8 @@ final class AppModel {
     var trPageTarget: String? = nil
 
     private var toastTask: Task<Void, Never>? = nil
+
+    init() { story = storyStore.load() }
 
     // MARK: - lookups
 
@@ -142,13 +156,34 @@ final class AppModel {
 
     // MARK: - flow
 
-    func obNext() { step += 1 }
-    func obBack() { step = max(0, step - 1) }
+    func obNext() { obAttempted = false; step += 1 }
+    func obBack() { obAttempted = false; step = max(0, step - 1) }
+
+    var obNameError: String? { obName.trimmingCharacters(in: .whitespaces).isEmpty ? "Enter your name." : nil }
+    var obEmailError: String? {
+        let e = obEmail.trimmingCharacters(in: .whitespaces)
+        if e.isEmpty { return "Enter your email." }
+        return e.range(of: #"^[A-Z0-9._%+-]+@[A-Z0-9-]+(\.[A-Z0-9-]+)*\.[A-Z]{2,}$"#, options: [.regularExpression, .caseInsensitive]) == nil
+            ? "Enter a valid email, like you@school.edu." : nil
+    }
+    var obPasswordError: String? {
+        if obPassword.isEmpty { return "Create a password." }
+        return obPassword.count < 8 ? "Your password needs at least 8 characters." : nil
+    }
+    /// Account step: only continue once name, email and password are valid.
+    func obAccountContinue() {
+        obAttempted = true
+        guard obNameError == nil, obEmailError == nil, obPasswordError == nil else { return }
+        let full = obName.trimmingCharacters(in: .whitespaces)
+        people["me"]?.full = full
+        people["me"]?.name = String(full.split(separator: " ").first ?? Substring(full))
+        obNext()
+    }
     func toggleGoal(_ id: String) { if obGoals.contains(id) { obGoals.remove(id) } else { obGoals.insert(id) } }
     func toggleObAdd(_ id: String) { if obAdded.contains(id) { obAdded.remove(id) } else { obAdded.insert(id) } }
     func obFinish() {
         mode = .app; tab = .today; stack = []
-        showToast("Welcome to Daybook, Shannon")
+        showToast("Welcome to Daybook, \(person("me").name)")
     }
     func selectTab(_ t: Tab) { tab = t; stack = [] }
     func push(_ r: RouteKind, _ id: String? = nil) {
@@ -188,9 +223,18 @@ final class AppModel {
 
     // MARK: - check-ins
 
+    /// Tapping a check: done → ask before undoing; photo task → camera first; otherwise stamp it.
     func check(_ id: String) {
         guard let h = H(id) else { return }
-        if isDone(h, "me") { undoCheck(id) } else { checkOff(id) }
+        if isDone(h, "me") { pendingUncheck = id }
+        else if h.proof { openSheet(SheetState(type: .proof, id: id)) }
+        else { checkOff(id) }
+    }
+
+    func confirmUncheck() {
+        guard let id = pendingUncheck else { return }
+        pendingUncheck = nil
+        undoCheck(id)
     }
 
     func checkOff(_ id: String, ask: Bool = true) {
@@ -232,29 +276,71 @@ final class AppModel {
 
     func askPhoto(_ id: String) { sheet = SheetState(type: .proof, presentID: sheet?.presentID ?? UUID(), id: id) }
     func askSkip(_ id: String) {
-        let has = H(id) != nil
+        guard let h = H(id) else { closeSheet(); return }
         closeSheet()
-        if has { showToast(voice, undo: { [weak self] in self?.undoCheck(id) }) }
+        // a photo task that isn't stamped yet simply stays open
+        if isDone(h, "me") { showToast(voice, undo: { [weak self] in self?.pendingUncheck = id }) }
     }
-    func shoot() { sheet?.shot = true; sheet?.flash += 1 }
-    func retake() { sheet?.shot = false }
+    /// Shutter: open the real camera, or explain why it can't open.
+    func shoot() {
+        sheet?.photoError = nil
+        Task { @MainActor in
+            if let problem = await Camera.availabilityProblem() {
+                sheet?.photoError = problem
+            } else {
+                sheet?.showCamera = true
+            }
+        }
+    }
+    func captured(_ image: UIImage) {
+        sheet?.showCamera = false
+        sheet?.photo = image
+        sheet?.shot = true
+        sheet?.photoError = nil
+        sheet?.flash += 1
+    }
+    func retake() { sheet?.shot = false; sheet?.photo = nil; sheet?.photoError = nil }
+
+    /// Saves the photo to the story; the task is stamped only once that has succeeded.
     func postProof(_ id: String) {
-        guard let i = hIndex(id) else { return }
-        let cap = (sheet?.caption ?? "").trimmingCharacters(in: .whitespaces)
+        guard let i = hIndex(id), let s = sheet, !s.saving else { return }
+        guard let photo = s.photo else {
+            sheet?.photoError = "Take a photo first. \(habits[i].name) stays open until a photo is added."
+            return
+        }
+        sheet?.saving = true
+        let cap = s.caption.trimmingCharacters(in: .whitespaces)
+        let h = habits[i]
+        do {
+            let item = try storyStore.add(photo, habit: h, caption: cap.isEmpty ? nil : cap, time: h.mem["me"]?.done ?? Seed.now,
+                                          place: G(h.group)?.name ?? "Just me", to: story)
+            story.append(item)
+        } catch {
+            sheet?.saving = false
+            sheet?.photoError = "Your photo wasn’t saved to your story: \(error.localizedDescription). \(isDone(h, "me") ? "Try posting again." : "\(h.name) is still open — try again.")"
+            return
+        }
+        if !isDone(h, "me") { checkOff(id, ask: false) }
         habits[i].mem["me"]?.proof = true
         habits[i].mem["me"]?.caption = cap.isEmpty ? nil : cap
         closeSheet()
-        let h = habits[i]
-        showToast(shared(h) ? "Posted to \(G(h.group)?.name ?? "your friends")" : "Photo saved", icon: .camera)
+        showToast(shared(h) ? "Posted to \(G(h.group)?.name ?? "your friends") and your story" : "Added to your story", icon: .camera)
     }
     func addPhoto(_ id: String) {
-        guard let h = H(id) else { return }
-        if !isDone(h, "me") { checkOff(id, ask: false) }
+        guard H(id) != nil else { return }
         openSheet(SheetState(type: .proof, id: id))
     }
+    /// Latest story photo for a habit (today's post).
+    func storyItem(for habitId: String) -> StoryItem? { story.last { $0.habitId == habitId } }
+    func storyImage(_ item: StoryItem) -> UIImage? { storyStore.image(item) }
+    func openStory() { if !story.isEmpty { overlay = .story(UUID()) } }
     func viewPost(_ id: String, _ p: String) { openSheet(SheetState(type: .post, id: id, p: p)) }
     func removePhoto(_ id: String) {
         guard let i = hIndex(id) else { return }
+        if let item = storyItem(for: id) {
+            storyStore.remove(item, from: story)
+            story.removeAll { $0.id == item.id }
+        }
         habits[i].mem["me"]?.proof = false
         habits[i].mem["me"]?.caption = nil
         closeSheet()
@@ -567,8 +653,12 @@ final class AppModel {
     func reset() {
         overlay = nil
         sheet = nil
+        pendingUncheck = nil
+        storyStore.removeAll()
+        story = []
         let fresh = AppModel()
         mode = .onboard; step = 0; obGoals = fresh.obGoals; obAdded = fresh.obAdded
+        obName = ""; obEmail = ""; obPassword = ""; obAttempted = false
         tab = .today; stack = []; expanded = nil; anim = nil; day = 6
         people = fresh.people; friends = fresh.friends; habits = fresh.habits; groups = fresh.groups; invites = fresh.invites
         communities = fresh.communities; notifs = fresh.notifs; trophies = fresh.trophies; myAv = fresh.myAv
