@@ -210,6 +210,8 @@ struct RecapCurtain: View {
                         .opacity(dim ? 0.12 : 0.45)
                         .animation(.easeInOut(duration: 0.8), value: dim)
                 }
+                // the floor bleeds past the edges; keep it from widening the stage (and pushing slides off-screen)
+                .frame(width: g.size.width)
 
                 if let r = picks {
                     ForEach(0..<slideCount, id: \.self) { i in
