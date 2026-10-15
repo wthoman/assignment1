@@ -223,10 +223,12 @@ struct SheetHost: View {
 }
 
 struct SheetPanel: View {
+    @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
     let type: SheetType
     let tall: Bool
     let maxH: CGFloat
+    @State private var drag: CGFloat = 0
     var body: some View {
         let shape = UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
         VStack(spacing: 0) {
@@ -237,6 +239,19 @@ struct SheetPanel: View {
         .frame(height: tall ? maxH : nil)
         .frame(maxHeight: maxH, alignment: .top)
         .background(ZStack { c.bg; Grain() }.clipShape(shape).ignoresSafeArea(edges: .bottom))
+        .offset(y: drag)
+        // drag down to dismiss (scrolling content keeps its own pan; the grabber/header always work)
+        .gesture(
+            DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                .onChanged { v in drag = v.translation.height > 0 ? v.translation.height : v.translation.height / 8 }
+                .onEnded { v in
+                    if v.translation.height > 110 || v.predictedEndTranslation.height > 260 {
+                        m.closeSheet()
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { drag = 0 }
+                    }
+                }
+        )
         .accessibilityAddTraits(.isModal)
     }
 }

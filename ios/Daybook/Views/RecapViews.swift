@@ -178,6 +178,10 @@ struct RecapCurtain: View {
     @State private var picks: AppModel.RecapPicks? = nil
     @State private var opened = false
     @State private var index = -1
+    @State private var shownAt = Date()
+    @State private var running = false
+    @State private var timer: Task<Void, Never>? = nil
+    private let slideDuration: Double = 6
 
     private var slideCount: Int {
         guard let r = picks else { return 0 }
@@ -220,7 +224,8 @@ struct RecapCurtain: View {
                             .opacity(i == index ? 1 : 0)
                             .scaleEffect(i == index ? 1 : 0.97)
                             .animation(.easeOut(duration: i == index ? 0.55 : 0.22), value: index)
-                            .allowsHitTesting(i == index)
+                            // only the last (share) page has controls; elsewhere taps fall through to the tap zones
+                            .allowsHitTesting(i == index && i == slideCount - 1)
                             .zIndex(15)
                     }
                 }
@@ -275,9 +280,17 @@ struct RecapCurtain: View {
 
                 // progress bars
                 VStack {
-                    HStack(spacing: 4) {
-                        ForEach(0..<slideCount, id: \.self) { k in
-                            Rectangle().fill(k <= index ? Color.white : Color.white.opacity(0.22)).frame(height: 2)
+                    // the current page's bar fills over its viewing time
+                    TimelineView(.animation(paused: !running)) { t in
+                        let elapsed = min(1, max(0, t.date.timeIntervalSince(shownAt) / slideDuration))
+                        HStack(spacing: 4) {
+                            ForEach(0..<slideCount, id: \.self) { k in
+                                let fill = k < index ? 1 : k == index ? elapsed : 0
+                                Rectangle().fill(Color.white.opacity(0.22)).frame(height: 2)
+                                    .overlay(alignment: .leading) {
+                                        GeometryReader { b in Rectangle().fill(Color.white).frame(width: b.size.width * fill) }
+                                    }
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -307,9 +320,18 @@ struct RecapCurtain: View {
                 .zIndex(45)
             }
             .ignoresSafeArea()
+            // swipe left / right to change pages
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 24)
+                    .onEnded { v in
+                        guard opened, abs(v.translation.width) > abs(v.translation.height), abs(v.translation.width) > 40 else { return }
+                        if v.translation.width < 0 { next() } else { prev() }
+                    }
+            )
         }
         .foregroundStyle(Color(hex: 0xF6EBE6))
         .onAppear { picks = m.recapPicks() }
+        .onDisappear { timer?.cancel() }
     }
 
     private func open() {
@@ -325,6 +347,19 @@ struct RecapCurtain: View {
     private func go(_ i: Int) {
         index = max(0, min(slideCount - 1, i))
         if index >= slideCount - 2 { m.recapReachedAward() }
+        startTimer()
+    }
+    /// (Re)starts the current page's clock; advances when it runs out, and stops on the last page.
+    private func startTimer() {
+        timer?.cancel()
+        shownAt = Date()
+        running = true
+        let at = index
+        timer = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(slideDuration * 1_000_000_000))
+            guard !Task.isCancelled, index == at else { return }
+            if at < slideCount - 1 { go(at + 1) } else { running = false }
+        }
     }
 }
 
