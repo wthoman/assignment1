@@ -1,6 +1,6 @@
-# Daybook — architecture & UI conventions
+# Creds — architecture & UI conventions
 
-Daybook (temporary name, see `src/lib/brand.ts` + `src/components/brand/Logo.tsx`) is a local-first,
+Creds (temporary name, see `src/lib/brand.ts` + `src/components/brand/Logo.tsx`) is a local-first,
 mobile-first social habit tracker built with Next.js 16 (App Router), React 19, TypeScript,
 Tailwind CSS v4, `motion` (Framer Motion) and `lucide-react`.
 

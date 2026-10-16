@@ -243,7 +243,7 @@ struct HabitCard: View {
     }
 }
 
-/// The check: Daybook stamp look, tap-to-tick behaviour.
+/// The check: Creds stamp look, tap-to-tick behaviour.
 struct CheckButton: View {
     @Environment(\.pal) private var c
     let done: Bool

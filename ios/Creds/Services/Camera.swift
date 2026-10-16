@@ -4,7 +4,7 @@ import AVFoundation
 
 enum Camera {
     @MainActor
-    /// Checks the camera exists and that Daybook may use it. Returns an explanation when it can't be used.
+    /// Checks the camera exists and that Creds may use it. Returns an explanation when it can't be used.
     static func availabilityProblem() async -> String? {
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
             return "There’s no camera available on this device, so the photo can’t be taken. The task stays open until a photo is added."
@@ -19,7 +19,7 @@ enum Camera {
         }
     }
 
-    static let deniedMessage = "Daybook doesn’t have permission to use the camera. Turn it on in Settings › Privacy & Security › Camera, then try again. The task stays open until a photo is added."
+    static let deniedMessage = "Creds doesn’t have permission to use the camera. Turn it on in Settings › Privacy & Security › Camera, then try again. The task stays open until a photo is added."
 }
 
 /// The system camera, photo mode only (no library).

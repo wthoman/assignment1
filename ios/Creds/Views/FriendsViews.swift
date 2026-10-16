@@ -223,7 +223,7 @@ struct AddFriendsView: View {
                 }
             }
             .card(v: 4, h: 14)
-            Text("Demo contacts. Daybook never reads your real address book.").font(.sans(12)).foregroundStyle(c.ink3)
+            Text("Demo contacts. Creds never reads your real address book.").font(.sans(12)).foregroundStyle(c.ink3)
                 .padding(.horizontal, 4).padding(.top, 8)
             Button { m.showToast("Invite link copied") } label: { Ico(.link); Text("Copy my invite link") }
                 .buttonStyle(.btn(.line)).padding(.top, 16)

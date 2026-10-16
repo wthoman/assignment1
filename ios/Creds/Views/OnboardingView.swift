@@ -46,7 +46,7 @@ private struct Splash: View {
             VStack(spacing: 0) {
                 Spacer()
                 Text("Now showing").font(.mono(10.5)).tracking(3.4).textCase(.uppercase).foregroundStyle(Brand.gold2)
-                Text("Daybook").font(.serif(96)).italic().tracking(-2.5).foregroundStyle(Brand.cream)
+                Text("Creds").font(.serif(96)).italic().tracking(-2.5).foregroundStyle(Brand.cream)
                     .shadow(color: .black.opacity(0.5), radius: 20, y: 8)
                     .padding(.top, 14).padding(.bottom, 18)
                 Text("Habits are easier with an audience. Show up, check in, and keep each other going.")
@@ -185,7 +185,7 @@ private struct PeopleStep: View {
     @Environment(\.pal) private var c
     var body: some View {
         ObScaffold {
-            ObHeading(eyebrow: "Your circle", lead: "Find your ", em: "people.", sub: "These contacts are already on Daybook.")
+            ObHeading(eyebrow: "Your circle", lead: "Find your ", em: "people.", sub: "These contacts are already on Creds.")
             VStack(spacing: 0) {
                 ForEach(Array(m.friends.enumerated()), id: \.element) { i, p in
                     let added = m.obAdded.contains(p)

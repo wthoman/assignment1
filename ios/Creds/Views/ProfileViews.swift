@@ -209,7 +209,7 @@ struct SettingsView: View {
                 .buttonStyle(.press)
             }
             .card(v: 4, h: 14).padding(.bottom, 12)
-            Text("Daybook 1.0 · demo build").font(.sans(12)).foregroundStyle(c.ink3).frame(maxWidth: .infinity).padding(.top, 2)
+            Text("Creds 1.0 · demo build").font(.sans(12)).foregroundStyle(c.ink3).frame(maxWidth: .infinity).padding(.top, 2)
         }
     }
 }

@@ -75,7 +75,7 @@ struct DetailsSheet: View {
     }
 }
 
-/// Monthly calendar (Daybook's, shown in habit details).
+/// Monthly calendar (Creds', shown in habit details).
 struct MonthGrid: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c

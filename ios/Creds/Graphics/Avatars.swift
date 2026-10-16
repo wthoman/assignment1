@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Preset drawn avatars (Daybook look, limited customisation).
+/// Preset drawn avatars (Creds look, limited customisation).
 struct AvatarPreset {
     let n: String
     let bg, skin, hair, shirt: String

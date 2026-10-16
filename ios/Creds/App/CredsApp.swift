@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct DaybookApp: App {
+struct CredsApp: App {
     @State private var model = AppModel()
     var body: some Scene {
         WindowGroup {

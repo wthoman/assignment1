@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// Palette: Encore's paper / stage themes with Daybook's burgundy as the main colour.
+// Palette: Encore's paper / stage themes with Creds' burgundy as the main colour.
 // Type: New York headings (serif), SF Pro body, SF Mono labels — all ship with iOS.
 
 enum ThemeName: String { case paper, stage }

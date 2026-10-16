@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Trophies tab — Daybook's book layout, filled with trophies & medals.
+/// Trophies tab — Creds' book layout, filled with trophies & medals.
 struct TrophiesView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c

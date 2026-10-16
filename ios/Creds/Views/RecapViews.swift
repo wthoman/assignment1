@@ -261,7 +261,7 @@ struct RecapCurtain: View {
 
                 // intro
                 VStack(spacing: 0) {
-                    Text("Daybook presents").font(.mono(11)).tracking(3.7).textCase(.uppercase).foregroundStyle(Brand.gold2)
+                    Text("Creds presents").font(.mono(11)).tracking(3.7).textCase(.uppercase).foregroundStyle(Brand.gold2)
                     Text("Your week,\n\(Text("in review").italic())").font(.serif(66)).tracking(-1.3).lineSpacing(-8)
                         .foregroundStyle(.white).shadow(color: .black.opacity(0.5), radius: 15, y: 4)
                         .padding(.top, 16).padding(.bottom, 12)
@@ -446,7 +446,7 @@ private struct RecapSlide: View {
                 let best = picks.myBest.map { m.streak($0, "me") } ?? 0
                 VStack(spacing: 0) {
                     Stamp(size: 74, color: Brand.gold2) { Ico(.trophy, 18); Text("Medal") }
-                    Text("DAYBOOK · WEEK 40").font(.mono(7.5)).tracking(2.25).foregroundStyle(Brand.gold2).padding(.top, 10)
+                    Text("CREDS · WEEK 40").font(.mono(7.5)).tracking(2.25).foregroundStyle(Brand.gold2).padding(.top, 10)
                     Text("Steady Week").font(.serif(24)).italic().foregroundStyle(.white).padding(.top, 4)
                     Text("\(picks.myCount) check-ins · \(best)-day streak").font(.mono(8)).textCase(.uppercase).foregroundStyle(Color(hex: 0xF3D6CF)).padding(.top, 6)
                 }

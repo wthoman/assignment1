@@ -183,7 +183,7 @@ final class AppModel {
     func toggleObAdd(_ id: String) { if obAdded.contains(id) { obAdded.remove(id) } else { obAdded.insert(id) } }
     func obFinish() {
         mode = .app; tab = .today; stack = []
-        showToast("Welcome to Daybook, \(person("me").name)")
+        showToast("Welcome to Creds, \(person("me").name)")
     }
     func selectTab(_ t: Tab) { tab = t; stack = [] }
     func push(_ r: RouteKind, _ id: String? = nil) {
