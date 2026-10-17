@@ -92,7 +92,6 @@ final class AppModel {
     var q = ""
     var cat = "All"
     var trView = "book"
-    var trFilter = "All"
     var pinned: [String] = ["t16", "t11", "t5"]
     var recapSeen = false
     var settings: [String: Bool] = ["notif": true, "sound": true, "haptics": true, "share": true]
@@ -662,7 +661,7 @@ final class AppModel {
         tab = .today; stack = []; expanded = nil; anim = nil; day = 6
         people = fresh.people; friends = fresh.friends; habits = fresh.habits; groups = fresh.groups; invites = fresh.invites
         communities = fresh.communities; notifs = fresh.notifs; trophies = fresh.trophies; myAv = fresh.myAv
-        reacts = [:]; comments = [:]; requests = fresh.requests; q = ""; cat = "All"; trView = "book"; trFilter = "All"
+        reacts = [:]; comments = [:]; requests = fresh.requests; q = ""; cat = "All"; trView = "book"
         pinned = fresh.pinned; recapSeen = false; settings = fresh.settings; contactInvited = []
         showToast("Demo data reset")
     }

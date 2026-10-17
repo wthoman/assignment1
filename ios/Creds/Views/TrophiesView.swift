@@ -5,50 +5,17 @@ struct TrophiesView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
 
-    private func pass(_ t: Trophy) -> Bool {
-        m.trFilter == "All" || (m.trFilter == "Earned" ? t.got != nil : t.got == nil)
-    }
-
     var body: some View {
-        let got = m.trophies.filter { $0.got != nil }.count, total = m.trophies.count
-        Page { proxy in
+        let earned = m.trophies.filter { $0.got != nil }
+        Page { _ in
             GHead(eyebrow: "Your case", title: "Trophies") {
                 IconBtn(label: m.trView == "book" ? "Grid view" : "Book view", action: { m.trView = m.trView == "book" ? "grid" : "book" }) {
                     Ico(m.trView == "book" ? .grid : .book)
                 }
             }
-            HStack(spacing: 14) {
-                ZStack {
-                    Ring(size: 56, stroke: 6, pct: Double(got) / Double(total), track: c.line, color: c.acc)
-                    Text("\(got)").font(.sans(19, .bold)).foregroundStyle(c.ink)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("\(got) of \(total) earned").font(.serif(24)).foregroundStyle(c.ink)
-                    Text("Tap any trophy or medal for a closer look.").font(.sans(12.5)).foregroundStyle(c.ink3)
-                }
-                Spacer(minLength: 0)
-            }
-            .card()
-            .padding(.top, 12)
-            Bleed(inset: 16, spacing: 6) {
-                ForEach(["All", "Earned", "Still locked"], id: \.self) { f in Chip(label: f, on: m.trFilter == f) { m.trFilter = f } }
-            }
-            .padding(.top, 12)
             if m.trView == "book" {
-                FlowLayout(spacing: 4) {
-                    ForEach(Seed.pages, id: \.id) { pg in
-                        Button { withAnimation { proxy.scrollTo("page-" + pg.id, anchor: .top) } } label: {
-                            Text(pg.name).font(.sans(12.5, .semibold)).foregroundStyle(c.ink)
-                                .padding(.horizontal, 11).frame(height: 30)
-                                .background(UnevenRoundedRectangle(topLeadingRadius: 9, bottomLeadingRadius: 3, bottomTrailingRadius: 3, topTrailingRadius: 9).fill(c.bg2))
-                                .overlay(UnevenRoundedRectangle(topLeadingRadius: 9, bottomLeadingRadius: 3, bottomTrailingRadius: 3, topTrailingRadius: 9).strokeBorder(c.line, lineWidth: 1))
-                        }
-                        .buttonStyle(.press)
-                    }
-                }
-                .padding(.top, 14)
                 let pages = Seed.pages.enumerated().compactMap { i, pg -> (Int, TrophyPage, [Trophy])? in
-                    let items = m.trophies.filter { $0.pg == pg.id && pass($0) }
+                    let items = earned.filter { $0.pg == pg.id }
                     return items.isEmpty ? nil : (i, pg, items)
                 }
                 if pages.isEmpty {
@@ -59,7 +26,7 @@ struct TrophiesView: View {
                 }
             } else {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                    ForEach(m.trophies.filter(pass)) { t in
+                    ForEach(earned) { t in
                         TrophyItem(t: t, grid: true)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12).padding(.horizontal, 6)
