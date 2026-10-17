@@ -32,7 +32,7 @@ struct ProfileView: View {
                         }
                         .buttonStyle(.press)
                         .offset(x: 2, y: 72 - 16)
-                        .accessibilityLabel("Change avatar")
+                        .accessibilityLabel("Change profile picture")
                     }
                 Text(me.full).font(.serif(32)).foregroundStyle(c.ink).padding(.top, 12)
                 Text("@\(me.handle) · joined Aug 2026").font(.sans(13)).foregroundStyle(c.ink2).padding(.top, 4)
@@ -196,7 +196,7 @@ struct SettingsView: View {
             SettingsLabel("Account")
             VStack(spacing: 0) {
                 Button { m.avatarPicker() } label: {
-                    SetRow(first: true, icon: .user, iconSize: 16, title: "Change avatar") { Ico(.right).foregroundStyle(c.ink) }
+                    SetRow(first: true, icon: .user, iconSize: 16, title: "Change profile picture") { Ico(.right).foregroundStyle(c.ink) }
                 }
                 .buttonStyle(.press)
                 Button { m.reset() } label: {
@@ -240,33 +240,19 @@ struct AvatarSheet: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
     var body: some View {
-        if let s = m.sheet {
-            let sel = s.sel.isEmpty ? m.myAv : s.sel
-            VStack(spacing: 0) {
-                SheetHead {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Eyebrow("Avatar", acc: true)
-                        EmTitle(lead: "Pick your ", em: "look.", size: 26)
-                    }
+        VStack(spacing: 0) {
+            SheetHead {
+                VStack(alignment: .leading, spacing: 6) {
+                    Eyebrow("Profile picture", acc: true)
+                    EmTitle(lead: "Pick your ", em: "look.", size: 26)
                 }
-                SheetBody {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
-                        ForEach(Avatars.pickable, id: \.self) { id in
-                            let on = sel == id
-                            Button { m.sheet?.sel = id } label: {
-                                VStack(spacing: 6) {
-                                    AvatarArt(id: id).frame(width: 56, height: 56)
-                                    Text(Avatars.all[id]!.n).font(.sans(11.5, .semibold)).foregroundStyle(c.ink)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10).padding(.horizontal, 4)
-                                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? c.accOn(0.06) : c.card))
-                                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? c.acc : c.line, lineWidth: on ? 2 : 1))
-                            }
-                            .buttonStyle(.press)
-                        }
-                    }
-                    Button("Save avatar") { m.avSave() }.buttonStyle(.btn).padding(.top, 16)
+            }
+            SheetBody {
+                ProfilePic(size: 120).frame(maxWidth: .infinity)
+                ProfilePhotoPicker { Text(m.myPhoto == nil ? "Choose from library" : "Choose a different photo") }
+                    .buttonStyle(.btn).padding(.top, 20)
+                if m.myPhoto != nil {
+                    Button("Remove picture") { m.removePhoto() }.buttonStyle(.btn(.line)).padding(.top, 8)
                 }
             }
         }

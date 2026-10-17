@@ -214,7 +214,7 @@ struct AddFriendsView: View {
                 ForEach(Array(Seed.contacts.enumerated()), id: \.offset) { i, ct in
                     let invited = m.contactInvited.contains(i)
                     HStack(spacing: 12) {
-                        AvatarArt(id: ct.av).frame(width: 40, height: 40)
+                        DefaultAvatar(size: 40)
                         TwoLine(title: ct.n, sub: ct.s)
                         Button(invited ? "Invited" : "Invite") { m.contactInvite(i) }.buttonStyle(.btn(invited ? .line : .primary, small: true))
                     }

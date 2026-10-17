@@ -8,7 +8,6 @@ struct RecapHubView: View {
     var body: some View {
         let r = m.recapPicks()
         let sign = r.delta >= 0 ? "+" : "−"
-        let featuring = [r.perfect?.p, r.second?.who].compactMap { $0 }
         Page { _ in
             GHead(eyebrow: "Week 40", title: "Recap") {
                 IconBtn(label: "Share", action: { m.showToast("Recap card shared (mock)") }) { Ico(.share) }
@@ -54,26 +53,6 @@ struct RecapHubView: View {
                         Insight(eyebrow: "Needs a push", eyebrowColor: c.acc, title: weak.h.name, sub: "\(weak.n) of 7 days · try an earlier time?", fill: c.bg2)
                     }
                     .padding(.top, 12)
-                }
-            }
-            .card().blk()
-            VStack(alignment: .leading, spacing: 0) {
-                BlkHead(left: "Featuring") { Text("spoilers inside").font(.serifRaw(15)).italic().foregroundStyle(c.acc) }
-                ForEach(Array(featuring.enumerated()), id: \.offset) { i, p in
-                    Divided(first: i == 0) {
-                        HStack(spacing: 12) {
-                            Av(p: p, size: 34)
-                            TwoLine(title: m.person(p).name, sub: "A standout moment this week")
-                            Ico(.lock, 15).foregroundStyle(c.ink)
-                        }
-                    }
-                }
-                Divided(first: featuring.isEmpty) {
-                    HStack(spacing: 12) {
-                        Av(p: "me", size: 34)
-                        TwoLine(title: "You", sub: "Your personal highlight + a new medal")
-                        Ico(.lock, 15).foregroundStyle(c.ink)
-                    }
                 }
             }
             .card().blk()

@@ -119,6 +119,22 @@ private struct AccountStep: View {
         @Bindable var m = m
         ObScaffold {
             ObHeading(eyebrow: "Create account", lead: "Take your ", em: "seat.", sub: "So your friends can find you.")
+            ProfilePhotoPicker {
+                VStack(spacing: 10) {
+                    ProfilePic(size: 104)
+                        .overlay(Circle().strokeBorder(c.acc.opacity(m.myPhoto == nil ? 0.5 : 0), style: StrokeStyle(lineWidth: 2, dash: [5, 4])))
+                        .overlay(alignment: .bottomTrailing) {
+                            Ico(.camera, 15).foregroundStyle(Brand.onWine).frame(width: 34, height: 34)
+                                .background(Circle().fill(c.acc)).background(Circle().stroke(c.bg, lineWidth: 5))
+                        }
+                    Text(m.myPhoto == nil ? "Add a profile picture" : "Change profile picture")
+                        .font(.sans(14, .semibold)).foregroundStyle(c.acc)
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.press)
+            .padding(.bottom, 20)
             VStack(spacing: 8) {
                 Field(label: "Name", placeholder: "Your name", text: $m.obName,
                       error: m.obAttempted ? m.obNameError : nil, capitalization: .words)
@@ -126,18 +142,6 @@ private struct AccountStep: View {
                       error: m.obAttempted ? m.obEmailError : nil, keyboard: .emailAddress, capitalization: .never)
                 Field(label: "Password", placeholder: "At least 8 characters", text: $m.obPassword, secure: true,
                       error: m.obAttempted ? m.obPasswordError : nil)
-            }
-            Lbl(text: "Pick your avatar")
-            Bleed(inset: 22, spacing: 8) {
-                ForEach(Avatars.pickable, id: \.self) { id in
-                    Button { m.myAv = id } label: {
-                        AvatarArt(id: id).frame(width: 54, height: 54)
-                            .padding(3)
-                            .overlay(Circle().strokeBorder(m.myAv == id ? c.acc : .clear, lineWidth: 2.5))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Avatars.all[id]!.n)
-                }
             }
         } foot: {
             if m.obAttempted && (m.obNameError != nil || m.obEmailError != nil || m.obPasswordError != nil) {

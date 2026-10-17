@@ -150,7 +150,7 @@ private struct HabitList: View {
                     }
                     .padding(.horizontal, 4).padding(.top, idx == 0 && !readonly ? 0 : 8).padding(.bottom, 4)
                 }
-                HabitCard(h: h, readonly: readonly, dayIdx: m.day, proxy: proxy).id(h.id)
+                HabitCard(h: h, readonly: readonly, dayIdx: m.day).id(h.id)
             }
         }
         .onChange(of: m.anim) { _, id in
@@ -170,26 +170,16 @@ struct HabitCard: View {
     let h: Habit
     var readonly = false
     var dayIdx = 6
-    let proxy: ScrollViewProxy
 
     var body: some View {
         let d = readonly ? m.week(h, "me")[dayIdx] != 0 : m.isDone(h, "me")
-        let open = !readonly && m.expanded == h.id && m.anim != h.id
         let ppl = m.peopleOf(h)
         let w = m.week(h, "me")
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 CheckButton(done: d, readonly: readonly, name: h.name) { m.check(h.id) }
-                Button {
-                    withAnimation(.timingCurve(0.2, 0.9, 0.25, 1, duration: 0.32)) { m.toggleExpand(h.id) }
-                    if m.expanded == h.id {
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 340_000_000)
-                            withAnimation { proxy.scrollTo(h.id) }
-                        }
-                    }
-                } label: {
+                Button { m.openDetails(h.id) } label: {
                     HStack(spacing: 11) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(h.name).font(.sans(15, .semibold)).tracking(-0.075).lineLimit(1)
@@ -210,31 +200,12 @@ struct HabitCard: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(readonly)
-                .accessibilityValue(open ? "Expanded" : "Collapsed")
+                .accessibilityHint("Opens details")
             }
             .padding(.leading, 14).padding(.trailing, 11).padding(.vertical, 9)
-
-            if open {
-                Button { m.openDetails(h.id) } label: {
-                    HStack(spacing: 12) {
-                        Tile(size: 32, rotate: false, radiusScale: 0.95) { Ico(.info, 17) }
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Details").font(.sans(14, .semibold)).foregroundStyle(c.ink)
-                            Text(m.shared(h) ? "Streak, today’s photos and calendar · \(m.doneCount(h))/\(ppl.count) done" : "Streak and calendar")
-                                .font(.sans(12)).foregroundStyle(c.ink3).lineLimit(2)
-                        }
-                        Spacer(minLength: 0)
-                        Ico(.right, 14).foregroundStyle(c.acc)
-                    }
-                    .padding(.vertical, 11).padding(.horizontal, 12)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(c.card2))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(c.line, lineWidth: 1))
-                }
-                .buttonStyle(.press)
-                .padding(.horizontal, 14).padding(.bottom, 14)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
         }
+        .contentShape(shape)
+        .onTapGesture { if !readonly { m.openDetails(h.id) } }
         .clipShape(shape)
         .background(shape.fill(d ? c.accOn(0.05) : c.card).shadow(color: c.shadow.opacity(0.75), radius: 6, y: 5))
         .overlay(shape.strokeBorder(d ? c.acc.opacity(0.55) : c.acc.opacity(0.14), lineWidth: d ? 1.2 : 1))

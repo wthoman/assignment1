@@ -73,7 +73,7 @@ final class StoryStore {
         try JSONEncoder().encode(items).write(to: indexURL, options: .atomic)
     }
 
-    private static func downscaled(_ image: UIImage, maxSide: CGFloat = 1600) -> UIImage {
+    static func downscaled(_ image: UIImage, maxSide: CGFloat = 1600) -> UIImage {
         let s = max(image.size.width, image.size.height)
         guard s > maxSide else { return image }
         let k = maxSide / s

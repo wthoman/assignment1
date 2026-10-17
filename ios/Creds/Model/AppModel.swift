@@ -72,7 +72,6 @@ final class AppModel {
     var obAdded: Set<String> = ["mina", "preston", "caitlyn"]
     var tab: Tab = .today
     var stack: [Route] = []
-    var expanded: String? = nil
     var anim: String? = nil
     var day = 6
 
@@ -85,7 +84,8 @@ final class AppModel {
     var communities: [Community] = Seed.communities()
     var notifs: [Notif] = Seed.notifs()
     var trophies: [Trophy] = Seed.trophies()
-    var myAv = "a1"
+    /// The user's profile picture; nil shows the default profile icon.
+    var myPhoto: UIImage? = nil
     var reacts: [String: String] = [:]
     var comments: [String: [Comment]] = [:]
     var requests: [String] = ["sofia"]
@@ -101,6 +101,7 @@ final class AppModel {
     /// Habit waiting on the "undo check-in?" confirmation.
     var pendingUncheck: String? = nil
     private let storyStore = StoryStore()
+    private let photoStore = ProfilePhotoStore()
 
     // chrome
     var sheet: SheetState? = nil
@@ -113,7 +114,7 @@ final class AppModel {
 
     private var toastTask: Task<Void, Never>? = nil
 
-    init() { story = storyStore.load() }
+    init() { story = storyStore.load(); myPhoto = photoStore.load() }
 
     // MARK: - lookups
 
@@ -126,7 +127,6 @@ final class AppModel {
 
     func person(_ p: String) -> Person { people[p] ?? Person(name: p, full: p, handle: p, av: "a1", bio: "") }
     func nameOf(_ p: String) -> String { p == "me" ? "You" : person(p).name }
-    func avId(_ p: String) -> String { p == "me" ? myAv : person(p).av }
 
     func isDone(_ h: Habit, _ p: String) -> Bool { h.mem[p]?.done != nil }
     func streak(_ h: Habit, _ p: String) -> Int { guard let r = h.mem[p] else { return 0 }; return r.s + (r.done != nil ? 1 : 0) }
@@ -190,8 +190,7 @@ final class AppModel {
         if sheet != nil { closeSheet() }
     }
     func back() { if !stack.isEmpty { stack.removeLast() } }
-    func selectDay(_ i: Int) { day = i; expanded = nil }
-    func toggleExpand(_ id: String) { expanded = expanded == id ? nil : id }
+    func selectDay(_ i: Int) { day = i }
 
     // MARK: - sheets & toasts
 
@@ -372,7 +371,7 @@ final class AppModel {
         if f.with == "group", let g = G(f.gid) { g.members.forEach { if $0 != "me" { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } } }
         habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: f.freq, group: f.with == "group" ? f.gid : nil, proof: f.proof, mem: mm), at: 0)
         closeSheet()
-        mode = .app; tab = .today; stack = []; day = 6; expanded = id; anim = id
+        mode = .app; tab = .today; stack = []; day = 6; anim = id
         showToast("“\(name)” added to your book")
     }
 
@@ -636,8 +635,16 @@ final class AppModel {
 
     // MARK: - profile & settings
 
-    func avatarPicker() { openSheet(SheetState(type: .avatar, sel: myAv)) }
-    func avSave() { if let s = sheet?.sel { myAv = s }; closeSheet(); showToast("Avatar updated") }
+    func avatarPicker() { openSheet(SheetState(type: .avatar)) }
+    func setPhoto(_ image: UIImage) {
+        do {
+            myPhoto = try photoStore.save(image)
+            showToast("Profile picture updated")
+        } catch {
+            showToast("Your picture wasn’t saved: \(error.localizedDescription)")
+        }
+    }
+    func removePhoto() { photoStore.remove(); myPhoto = nil; showToast("Profile picture removed") }
     func editProfile() { openSheet(SheetState(type: .editprofile, full: person("me").full, bio: person("me").bio)) }
     func profileSave() {
         guard let s = sheet else { return }
@@ -654,13 +661,14 @@ final class AppModel {
         sheet = nil
         pendingUncheck = nil
         storyStore.removeAll()
+        photoStore.remove()
         story = []
         let fresh = AppModel()
         mode = .onboard; step = 0; obGoals = fresh.obGoals; obAdded = fresh.obAdded
         obName = ""; obEmail = ""; obPassword = ""; obAttempted = false
-        tab = .today; stack = []; expanded = nil; anim = nil; day = 6
+        tab = .today; stack = []; anim = nil; day = 6
         people = fresh.people; friends = fresh.friends; habits = fresh.habits; groups = fresh.groups; invites = fresh.invites
-        communities = fresh.communities; notifs = fresh.notifs; trophies = fresh.trophies; myAv = fresh.myAv
+        communities = fresh.communities; notifs = fresh.notifs; trophies = fresh.trophies; myPhoto = nil
         reacts = [:]; comments = [:]; requests = fresh.requests; q = ""; cat = "All"; trView = "book"
         pinned = fresh.pinned; recapSeen = false; settings = fresh.settings; contactInvited = []
         showToast("Demo data reset")
