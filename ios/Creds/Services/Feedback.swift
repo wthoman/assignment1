@@ -14,4 +14,10 @@ enum Feedback {
     static func bigMoment(_ m: AppModel) {
         if m.settings["haptics"] == true { UINotificationFeedbackGenerator().notificationOccurred(.success) }
     }
+
+    /// A light tick as a drag along the tab bar crosses into another tab.
+    @MainActor
+    static func tabTick(_ m: AppModel) {
+        if m.settings["haptics"] == true { UISelectionFeedbackGenerator().selectionChanged() }
+    }
 }

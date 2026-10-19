@@ -51,6 +51,7 @@ struct MainView: View {
     @Environment(\.pal) private var c
     /// The page the swipeable pager is showing; kept in step with `m.tab`.
     @State private var page: Tab? = .today
+    @State private var jumping = false
     var body: some View {
         ZStack(alignment: .bottom) {
             ZStack {
@@ -71,8 +72,16 @@ struct MainView: View {
                 .scrollPosition(id: $page)
                 .scrollDisabled(!tabsVisible)
                 .onAppear { page = m.tab }
-                .onChange(of: page) { _, p in if let p, p != m.tab { m.selectTab(p) } }
-                .onChange(of: m.tab) { _, t in if page != t { page = t } }
+                // a swipe on the pages picks the tab…
+                .onChange(of: page) { _, p in if let p, p != m.tab, !jumping { m.selectTab(p) } }
+                // …and a tab picked from the bar jumps straight there; animating would pass through (and report) the pages between
+                .onChange(of: m.tab) { _, t in
+                    guard page != t else { return }
+                    jumping = true
+                    var tx = Transaction(); tx.disablesAnimations = true
+                    withTransaction(tx) { page = t }
+                    DispatchQueue.main.async { jumping = false }
+                }
                 .opacity(tabsVisible ? 1 : 0)
                 .allowsHitTesting(tabsVisible)
                 .accessibilityHidden(!tabsVisible)
@@ -142,6 +151,9 @@ struct Page<Content: View>: View {
 struct TabBar: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
+    @State private var barWidth: CGFloat = 0
+    /// Set while a finger slides along the bar, so lifting it doesn't also "tap" the tab it started on.
+    @State private var scrubbing = false
     var body: some View {
         HStack(spacing: 0) {
             item(.today, "Today", .sun, dot: false)
@@ -149,6 +161,22 @@ struct TabBar: View {
             item(.trophies, "Trophies", .trophy, dot: m.trophies.contains { $0.fresh })
             item(.recap, "Recap", .film, dot: !m.recapSeen)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
+        // slide a finger along the bar to move between tabs; taps still go to the buttons
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 6)
+                .onChanged { v in
+                    scrubbing = true
+                    let tabs = Tab.allCases
+                    guard barWidth > 0 else { return }
+                    let i = min(max(Int(v.location.x / (barWidth / CGFloat(tabs.count))), 0), tabs.count - 1)
+                    if tabs[i] != m.tab || !m.stack.isEmpty {
+                        m.selectTab(tabs[i])
+                        Feedback.tabTick(m)
+                    }
+                }
+                .onEnded { _ in DispatchQueue.main.async { scrubbing = false } }
+        )
         .padding(.horizontal, 6).padding(.vertical, 8)
         .frame(height: 68)
         .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(c.tabBg).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous)))
@@ -160,7 +188,7 @@ struct TabBar: View {
 
     func item(_ t: Tab, _ label: String, _ icon: UIIcon, dot: Bool) -> some View {
         let on = m.tab == t
-        return Button { m.selectTab(t) } label: {
+        return Button { if !scrubbing { m.selectTab(t) } } label: {
             VStack(spacing: 3) {
                 Ico(icon, 21)
                 Text(label).font(.sans(11, .semibold))
