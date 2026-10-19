@@ -120,20 +120,36 @@ private struct AccountStep: View {
         ObScaffold {
             ObHeading(eyebrow: "Create account", lead: "Take your ", em: "seat.", sub: "So your friends can find you.")
             ProfilePhotoPicker {
-                VStack(spacing: 10) {
-                    ProfilePic(size: 104)
-                        .overlay(Circle().strokeBorder(c.acc.opacity(m.myPhoto == nil ? 0.5 : 0), style: StrokeStyle(lineWidth: 2, dash: [5, 4])))
+                let none = m.myPhoto == nil
+                VStack(spacing: 0) {
+                    ProfilePic(size: 128)
+                        .padding(5)
+                        .overlay(Circle().strokeBorder(c.acc.opacity(none ? 0.6 : 1), style: StrokeStyle(lineWidth: 2, dash: none ? [6, 5] : [])))
                         .overlay(alignment: .bottomTrailing) {
-                            Ico(.camera, 15).foregroundStyle(Brand.onWine).frame(width: 34, height: 34)
-                                .background(Circle().fill(c.acc)).background(Circle().stroke(c.bg, lineWidth: 5))
+                            Ico(none ? .plus : .camera, 18).foregroundStyle(Brand.onWine).frame(width: 42, height: 42)
+                                .background(Circle().fill(c.acc)).background(Circle().stroke(c.card, lineWidth: 5))
+                                .offset(x: -2, y: -2)
                         }
-                    Text(m.myPhoto == nil ? "Add a profile picture" : "Change profile picture")
-                        .font(.sans(14, .semibold)).foregroundStyle(c.acc)
+                    Text(none ? "Add a profile picture" : "Looking good!")
+                        .font(.sans(17, .semibold)).foregroundStyle(c.ink).padding(.top, 14)
+                    Text("Friends see it next to your check-ins.")
+                        .font(.sans(13.5)).foregroundStyle(c.ink2).padding(.top, 3)
+                    HStack(spacing: 7) { Ico(.camera, 15); Text(none ? "Choose a photo" : "Change photo") }
+                        .font(.sans(15, .semibold))
+                        .foregroundStyle(none ? Brand.onWine : c.acc)
+                        .padding(.horizontal, 18).frame(height: 42)
+                        .background(Capsule().fill(none ? c.acc : c.accSoft))
+                        .padding(.top, 14)
                 }
                 .frame(maxWidth: .infinity)
+                .padding(.vertical, 20).padding(.horizontal, 16)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(none ? c.accOn(0.05) : c.card))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(c.acc.opacity(none ? 0.35 : 0.15), lineWidth: 1.2))
                 .contentShape(Rectangle())
             }
             .buttonStyle(.press)
+            .accessibilityLabel(m.myPhoto == nil ? "Add a profile picture" : "Change profile picture")
+            .accessibilityHint("Opens your photo library")
             .padding(.bottom, 20)
             VStack(spacing: 8) {
                 Field(label: "Name", placeholder: "Your name", text: $m.obName,
@@ -163,7 +179,7 @@ private struct GoalsStep: View {
                     let on = m.obGoals.contains(g.id)
                     Button { m.toggleGoal(g.id) } label: {
                         HStack(spacing: 10) {
-                            Tile(size: 34, on: on) { HIcon(g.ic, 18) }
+                            Tile(size: 40, on: on) { HIcon(g.ic, 22) }
                             Text(g.l).font(.sans(14, .semibold)).foregroundStyle(c.ink)
                             Spacer(minLength: 0)
                         }

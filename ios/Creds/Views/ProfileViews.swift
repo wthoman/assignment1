@@ -92,7 +92,7 @@ struct ProfileView: View {
                     Button { m.openDetails(h.id) } label: {
                         Divided(first: i == 0) {
                             HStack(spacing: 12) {
-                                Tile(size: 34, on: true) { HIcon(h.ic, 17) }
+                                Tile(size: 40, on: true) { HIcon(h.ic, 21) }
                                 TwoLine(title: h.name, sub: "\(20 + m.weekCount(h, "me") * 9) check-ins")
                                 Ico(.right).foregroundStyle(c.ink)
                             }
@@ -134,7 +134,7 @@ struct ProfileView: View {
                     Button { m.openGroup(g.id) } label: {
                         Divided(first: false) {
                             HStack(spacing: 12) {
-                                Tile(size: 34) { HIcon(g.ic, 17) }
+                                Tile(size: 40) { HIcon(g.ic, 21) }
                                 TwoLine(title: g.name, sub: "\(g.type == "community" ? (g.size ?? 0).formatted() : "\(g.members.count)") members")
                                 Ico(.right).foregroundStyle(c.ink)
                             }

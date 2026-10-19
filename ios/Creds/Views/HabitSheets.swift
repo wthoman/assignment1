@@ -20,7 +20,7 @@ struct DetailsSheet: View {
             VStack(spacing: 0) {
                 SheetHead {
                     HStack(spacing: 12) {
-                        Tile(size: 56, on: d) { HIcon(h.ic, 26) }
+                        Tile(size: 60, on: d) { HIcon(h.ic, 31) }
                         VStack(alignment: .leading, spacing: 4) {
                             Text(h.name).font(.serif(28)).foregroundStyle(c.ink).lineLimit(2)
                             Text("\(g?.name ?? "Just me") · \(h.freq) · \(h.time)").font(.sans(12.5)).foregroundStyle(c.ink2)
@@ -156,9 +156,14 @@ struct CreateHabitSheet: View {
                     IconPicker(selected: s.ic) { m.sheet?.ic = $0 }
                     Lbl(text: "How often")
                     HStack(spacing: 6) {
-                        ForEach(["Every day", "Weekdays", "3× a week"], id: \.self) { f in
-                            Chip(label: f, on: s.freq == f) { m.sheet?.freq = f }
+                        ForEach(["Every day", "Weekdays", "Custom"], id: \.self) { f in
+                            Chip(label: f, on: s.freq == f) { withAnimation(.easeOut(duration: 0.2)) { m.sheet?.freq = f } }
                         }
+                    }
+                    if s.freq == "Custom" {
+                        DayPicker(selected: s.days) { m.toggleDay($0) }
+                            .padding(.top, 10)
+                            .transition(.opacity)
                     }
                     Lbl(text: "With")
                     Seg(options: [("solo", "Just me"), ("friends", "Friends"), ("group", "A group")], selected: s.with) { m.sheet?.with = $0 }
@@ -174,22 +179,37 @@ struct CreateHabitSheet: View {
                         }
                         .padding(.top, 12)
                     }
-                    Button { m.sheet?.proof.toggle() } label: {
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text("Ask for a photo").font(.sans(15, .semibold)).foregroundStyle(c.ink)
-                                Text("Take a photo to check it off").font(.sans(12.5)).foregroundStyle(c.ink3)
-                            }
-                            Spacer()
-                            Switch(on: s.proof)
-                        }
-                        .padding(.vertical, 12)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 8)
-                    Button("Add habit") { m.createGo() }.buttonStyle(.btn).padding(.top, 14)
                 }
+                // pinned so it stays reachable however tall the form gets
+                Button("Add habit") { m.createGo() }.buttonStyle(.btn)
+                    .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 12)
+                    .overlay(alignment: .top) { Rectangle().fill(c.line).frame(height: 1) }
+            }
+        }
+    }
+}
+
+/// Monday-first weekday toggles for a custom schedule.
+struct DayPicker: View {
+    @Environment(\.pal) private var c
+    let selected: [Int]
+    let toggle: (Int) -> Void
+    private let full = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<7, id: \.self) { i in
+                let on = selected.contains(i)
+                Button { toggle(i) } label: {
+                    Text(String(Array("MTWTFSS")[i])).font(.sans(14, .semibold))
+                        .foregroundStyle(on ? Brand.onWine : c.ink2)
+                        .frame(maxWidth: .infinity).frame(height: 40)
+                        .background(Circle().fill(on ? c.acc : c.card))
+                        .overlay(Circle().strokeBorder(on ? .clear : c.line, lineWidth: 1))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.press)
+                .accessibilityLabel(full[i])
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
     }
@@ -202,7 +222,7 @@ struct IconPicker: View {
     var body: some View {
         Bleed(inset: 18, spacing: 6) {
             ForEach(Array(HabitIcon.all.prefix(12)), id: \.self) { k in
-                Button { pick(k) } label: { Tile(size: 42, on: selected == k, rotate: false) { HIcon(k, 19) } }
+                Button { pick(k) } label: { Tile(size: 50, on: selected == k, rotate: false) { HIcon(k, 25) } }
                     .buttonStyle(.press)
                     .accessibilityLabel(k)
             }

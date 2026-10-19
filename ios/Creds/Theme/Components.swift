@@ -50,13 +50,13 @@ struct Tile<Content: View>: View {
     var body: some View {
         let k = size / 44 * radiusScale
         let shape = UnevenRoundedRectangle(topLeadingRadius: 13 * k, bottomLeadingRadius: 13.5 * k, bottomTrailingRadius: 13 * k, topTrailingRadius: 13 * k, style: .continuous)
-        let fill: Color = on ? c.acc : gold ? c.goldSoft : c.accOn(0.11)
+        let fill: Color = on ? c.acc : gold ? c.goldSoft : c.tile
         let fg: Color = on ? Brand.onWine : gold ? c.goldInk : c.acc
         content
             .foregroundStyle(fg)
             .frame(width: size, height: size)
             .background(shape.fill(fill))
-            .overlay(shape.strokeBorder(on ? .clear : gold ? Brand.gold.opacity(0.4) : c.acc.opacity(0.3), lineWidth: 1))
+            .overlay(shape.strokeBorder(on ? .clear : gold ? Brand.gold.opacity(0.4) : c.line.opacity(0.6), lineWidth: 1))
             .rotationEffect(.degrees(rotate ? -2 : 0))
     }
 }

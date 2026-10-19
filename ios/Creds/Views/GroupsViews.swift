@@ -468,7 +468,7 @@ struct GroupPageView: View {
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 12) {
-                        Tile(size: 56, on: true) { HIcon(info.ic, 26) }
+                        Tile(size: 60, on: true) { HIcon(info.ic, 31) }
                         VStack(alignment: .leading, spacing: 4) {
                             Text(info.name).font(.serif(30)).foregroundStyle(c.ink)
                             Text(info.type == "community" ? "\((info.size ?? 0).formatted()) members · open community" : "\(info.members.count) members")
@@ -515,7 +515,7 @@ struct GroupPageView: View {
                         ForEach(Array(info.fin.enumerated()), id: \.offset) { i, f in
                             Divided(first: i == 0) {
                                 HStack(spacing: 12) {
-                                    Tile(size: 34, on: f.ok) { Ico(.trophy, 16) }
+                                    Tile(size: 40, on: f.ok) { Ico(.trophy, 20) }
                                     TwoLine(title: f.t, sub: f.r, titleSize: 14)
                                     if f.ok {
                                         Stamp(size: 40, color: c.acc) { Text("Done").font(.mono(7, .medium)) }.rotationEffect(.degrees(-10))
@@ -668,7 +668,7 @@ struct SetRow<Trailing: View>: View {
     var body: some View {
         Divided(first: first, vpad: 11) {
             HStack(spacing: 12) {
-                Tile(size: 30, rotate: false, radiusScale: 0.95) { Ico(icon, iconSize) }
+                Tile(size: 36, rotate: false, radiusScale: 0.95) { Ico(icon, (iconSize ?? icon.defaultSize) * 1.2) }
                 TwoLine(title: title, sub: sub, titleSize: 15, titleColor: titleColor)
                 trailing
             }

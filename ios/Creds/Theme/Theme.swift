@@ -13,6 +13,8 @@ struct Palette {
     let goldInk, goldSoft: Color
     let yel, yelSoft, yelTrack, yelInk: Color
     let tabBg, grain, shadow: Color
+    /// Neutral gray behind red icons (Tile).
+    let tile: Color
     let isStage: Bool
 
     static let paper = Palette(
@@ -23,6 +25,7 @@ struct Palette {
         goldInk: Color(hex: 0x8C6A22), goldSoft: Color(hex: 0xF2E8CF),
         yel: Color(hex: 0xF2C14E), yelSoft: Color(hex: 0xFBF0CF), yelTrack: Color(hex: 0xF6E3AE), yelInk: Color(hex: 0x7E5A0B),
         tabBg: Color(hex: 0xFAF9F6, alpha: 0.94), grain: Color(hex: 0x141010, alpha: 0.045), shadow: Color(hex: 0x3A0A12, alpha: 0.28),
+        tile: Color(hex: 0xE6E5E3),
         isStage: false)
 
     static let stage = Palette(
@@ -33,6 +36,7 @@ struct Palette {
         goldInk: Color(hex: 0xD9B465), goldSoft: Color(hex: 0x2C2215),
         yel: Color(hex: 0xE8B94A), yelSoft: Color(hex: 0x33280F), yelTrack: Color(hex: 0x4A3A16), yelInk: Color(hex: 0xF0CC6A),
         tabBg: Color(hex: 0x120C0E, alpha: 0.94), grain: Color(hex: 0xFFFFFF, alpha: 0.035), shadow: Color(hex: 0x000000, alpha: 0.7),
+        tile: Color(hex: 0x2C2829),
         isStage: true)
 
     static func of(_ t: ThemeName) -> Palette { t == .stage ? .stage : .paper }

@@ -135,7 +135,7 @@ struct FriendProfileView: View {
                     ForEach(Array(sharedH.enumerated()), id: \.element.id) { i, h in
                         Divided(first: i == 0) {
                             HStack(spacing: 12) {
-                                Tile(size: 34, on: m.isDone(h, p)) { HIcon(h.ic, 17) }
+                                Tile(size: 40, on: m.isDone(h, p)) { HIcon(h.ic, 21) }
                                 TwoLine(title: h.name, sub: m.isDone(h, p) ? "Done today" : "Not yet today")
                             }
                         }
@@ -144,7 +144,7 @@ struct FriendProfileView: View {
                         Button { m.openGroup(g.id) } label: {
                             Divided(first: sharedH.isEmpty && i == 0) {
                                 HStack(spacing: 12) {
-                                    Tile(size: 34) { HIcon(g.ic, 17) }
+                                    Tile(size: 40) { HIcon(g.ic, 21) }
                                     TwoLine(title: g.name, sub: "Group · \(g.members.count) members")
                                     Ico(.right).foregroundStyle(c.ink)
                                 }
@@ -266,7 +266,7 @@ private struct NotifRow: View {
                             .background(Circle().fill(c.acc)).background(Circle().stroke(c.card, lineWidth: 4)).offset(x: 4, y: 4)
                     }
                 } else {
-                    Tile(size: 42, on: true) { Ico(icon, 19) }
+                    Tile(size: 48, on: true) { Ico(icon, 23) }
                 }
             }
             VStack(alignment: .leading, spacing: 0) {
@@ -341,7 +341,7 @@ struct InviteHabitSheet: View {
                         Button { m.inviteToHabit(h.id, s.p) } label: {
                             Divided(first: i == 0) {
                                 HStack(spacing: 12) {
-                                    Tile(size: 34) { HIcon(h.ic, 17) }
+                                    Tile(size: 40) { HIcon(h.ic, 21) }
                                     TwoLine(title: h.name, sub: "\(h.freq) · \(h.time)")
                                     Ico(.right).foregroundStyle(c.ink)
                                 }

@@ -194,7 +194,7 @@ struct HabitCard: View {
                             .frame(minHeight: 20)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Tile(size: 36, on: d) { HIcon(h.ic, 18) }
+                        Tile(size: 42, on: d) { HIcon(h.ic, 22) }
                     }
                     .contentShape(Rectangle())
                 }

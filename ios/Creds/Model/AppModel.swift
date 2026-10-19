@@ -29,7 +29,8 @@ struct SheetState {
     var with = "solo"
     var friends: [String] = []
     var gid: String? = nil
-    var proof = true
+    /// Custom schedule: weekday indexes, Monday = 0.
+    var days: [Int] = []
     var goal = ""
     var fromHabit: String? = nil
     // photo proof
@@ -358,21 +359,38 @@ final class AppModel {
 
     // MARK: - create habit
 
-    func openCreate() { openSheet(SheetState(type: .create, tall: true, name: "", ic: "water", freq: "Every day", with: "solo", proof: true)) }
+    func openCreate() { openSheet(SheetState(type: .create, name: "", ic: "water", freq: "Every day", with: "solo")) }
 
     func createGo() {
         guard let f = sheet else { return }
         let name = f.name.trimmingCharacters(in: .whitespaces)
         if name.isEmpty { showToast("Give your habit a name first", icon: .info); return }
         if f.with == "group" && f.gid == nil { showToast("Pick a group for this habit", icon: .info); return }
+        if f.freq == "Custom" && f.days.isEmpty { showToast("Pick at least one day", icon: .info); return }
+        let freq = f.freq == "Custom" ? Self.freqLabel(f.days) : f.freq
         let id = "h" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36)
         var mm = Ordered<Member>([("me", mem(0, [0, 0, 0, 0, 0, 0]))])
         if f.with == "friends" { f.friends.forEach { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } }
         if f.with == "group", let g = G(f.gid) { g.members.forEach { if $0 != "me" { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } } }
-        habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: f.freq, group: f.with == "group" ? f.gid : nil, proof: f.proof, mem: mm), at: 0)
+        habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: freq, group: f.with == "group" ? f.gid : nil, proof: false, mem: mm), at: 0)
         closeSheet()
         mode = .app; tab = .today; stack = []; day = 6; anim = id
         showToast("“\(name)” added to your book")
+    }
+
+    static let weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    /// "Mon, Wed, Fri" — or the preset name when the custom days match one.
+    static func freqLabel(_ days: [Int]) -> String {
+        let d = Set(days).sorted()
+        if d.count == 7 { return "Every day" }
+        if d == [0, 1, 2, 3, 4] { return "Weekdays" }
+        return d.map { weekdayNames[$0] }.joined(separator: ", ")
+    }
+
+    func toggleDay(_ i: Int) {
+        guard sheet != nil else { return }
+        if let k = sheet?.days.firstIndex(of: i) { sheet?.days.remove(at: k) } else { sheet?.days.append(i) }
     }
 
     // MARK: - groups

@@ -49,17 +49,33 @@ struct RootView: View {
 struct MainView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
+    /// The page the swipeable pager is showing; kept in step with `m.tab`.
+    @State private var page: Tab? = .today
     var body: some View {
         ZStack(alignment: .bottom) {
             ZStack {
-                // tab roots stay alive so each keeps its scroll position
-                ForEach(Tab.allCases, id: \.self) { t in
-                    let visible = m.tab == t && m.stack.isEmpty
-                    tabRoot(t)
-                        .opacity(visible ? 1 : 0)
-                        .allowsHitTesting(visible)
-                        .accessibilityHidden(!visible)
+                // swipe between tabs; not lazy, so tab roots stay alive and each keeps its scroll position
+                let tabsVisible = m.stack.isEmpty
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(Tab.allCases, id: \.self) { t in
+                            tabRoot(t)
+                                .containerRelativeFrame(.horizontal)
+                                .id(t)
+                                .accessibilityHidden(m.tab != t)
+                        }
+                    }
+                    .scrollTargetLayout()
                 }
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $page)
+                .scrollDisabled(!tabsVisible)
+                .onAppear { page = m.tab }
+                .onChange(of: page) { _, p in if let p, p != m.tab { m.selectTab(p) } }
+                .onChange(of: m.tab) { _, t in if page != t { page = t } }
+                .opacity(tabsVisible ? 1 : 0)
+                .allowsHitTesting(tabsVisible)
+                .accessibilityHidden(!tabsVisible)
                 ForEach(Array(m.stack.enumerated()), id: \.element.uid) { i, r in
                     let visible = i == m.stack.count - 1
                     RouteView(route: r)
@@ -211,7 +227,8 @@ struct SheetHost: View {
                         .ignoresSafeArea()
                         .onTapGesture { m.closeSheet() }
                         .transition(.opacity)
-                    SheetPanel(type: s.type, tall: s.tall, maxH: (g.size.height + g.safeAreaInsets.top) * 0.93)
+                    // capped so a tall sheet never runs up under the status bar
+                    SheetPanel(type: s.type, tall: s.tall, maxH: min((g.size.height + g.safeAreaInsets.top) * 0.93, g.size.height - 12))
                         .id(s.presentID)
                         .transition(.move(edge: .bottom))
                 }
@@ -231,13 +248,15 @@ struct SheetPanel: View {
     @State private var drag: CGFloat = 0
     var body: some View {
         let shape = UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
-        VStack(spacing: 0) {
-            Capsule().fill(c.line2).frame(width: 38, height: 5).padding(.top, 9).padding(.bottom, 2)
-            SheetContent(type: type)
+        // tall sheets fill maxH; the rest hug their content up to maxH (a plain maxHeight frame would always fill it)
+        HugUpTo(maxHeight: maxH) {
+            VStack(spacing: 0) {
+                Capsule().fill(c.line2).frame(width: 38, height: 5).padding(.top, 9).padding(.bottom, 2)
+                SheetContent(type: type)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: tall ? maxH : nil)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: tall ? maxH : nil)
-        .frame(maxHeight: maxH, alignment: .top)
         .background(ZStack { c.bg; Grain() }.clipShape(shape).ignoresSafeArea(edges: .bottom))
         .offset(y: drag)
         // drag down to dismiss (scrolling content keeps its own pan; the grabber/header always work)
@@ -293,6 +312,19 @@ struct SheetHead<Content: View>: View {
     }
 }
 
+/// Offers its content `maxHeight` and takes only the height the content uses.
+struct HugUpTo: Layout {
+    var maxHeight: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let h = min(proposal.height ?? maxHeight, maxHeight)
+        let s = subviews.first?.sizeThatFits(ProposedViewSize(width: proposal.width, height: h)) ?? .zero
+        return CGSize(width: proposal.width ?? s.width, height: min(s.height, h))
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+    }
+}
+
 /// Sheet body: scrolls when taller than the sheet, otherwise hugs its content.
 struct SheetBody<Content: View>: View {
     var top: CGFloat = 6
@@ -302,18 +334,13 @@ struct SheetBody<Content: View>: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) { content }
                 .padding(.horizontal, 18).padding(.top, top).padding(.bottom, 32)
-                .background(GeometryReader { g in Color.clear.preference(key: HeightKey.self, value: g.size.height) })
+                // measured directly: a preference set inside the ScrollView doesn't reliably reach it
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h = $0 }
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .frame(maxHeight: h > 0 ? h : nil)
-        .onPreferenceChange(HeightKey.self) { h = $0 }
     }
-}
-
-struct HeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 // MARK: - Overlays (recap curtain, goal celebration)
