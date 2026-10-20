@@ -189,7 +189,7 @@ private struct InviteCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 GroupIcon(ic: v.ic)
-                Text(v.name).font(.serif(20)).foregroundStyle(c.ink).frame(maxWidth: .infinity, alignment: .leading)
+                Text(v.name).font(.sans(20, .medium)).foregroundStyle(c.ink).frame(maxWidth: .infinity, alignment: .leading)
                 AvStack(list: v.members, size: 22, max: 3)
             }
             Text("\(m.person(v.from).name) invited you").font(.sans(12.5)).foregroundStyle(c.ink2).padding(.top, 6).padding(.leading, 38)
@@ -245,7 +245,7 @@ private struct GroupCard: View {
                 HStack(spacing: 10) {
                     GroupIcon(ic: g.ic)
                     HStack(spacing: 4) {
-                        Text(g.name).font(.serif(20)).foregroundStyle(c.ink).multilineTextAlignment(.leading)
+                        Text(g.name).font(.sans(20, .medium)).foregroundStyle(c.ink).multilineTextAlignment(.leading)
                         if g.type == "community" { OpenTag() }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -338,7 +338,7 @@ private struct CommunityRow: View {
         HStack(spacing: 12) {
             Tile(size: 48) { HIcon(cm.ic, 28) }
             VStack(alignment: .leading, spacing: 0) {
-                Text(cm.name).font(.sans(15, .semibold)).foregroundStyle(c.ink)
+                Text(cm.name).font(.sans(15, .medium)).foregroundStyle(c.ink)
                 Text("\(cm.size.formatted()) members · \(cm.pct)% today").font(.sans(12)).foregroundStyle(c.ink3).padding(.top, 2)
                 if !f.isEmpty {
                     HStack(spacing: 6) {
@@ -471,7 +471,7 @@ struct GroupPageView: View {
                     HStack(spacing: 12) {
                         Tile(size: 66, on: true) { HIcon(info.ic, 38) }
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(info.name).font(.serif(30)).foregroundStyle(c.ink)
+                            Text(info.name).font(.sans(30, .medium)).foregroundStyle(c.ink)
                             Text(info.type == "community" ? "\((info.size ?? 0).formatted()) members · open community" : "\(info.members.count) members")
                                 .font(.sans(13)).foregroundStyle(c.ink2)
                         }
@@ -752,7 +752,7 @@ struct GroupMenuSheet: View {
     var body: some View {
         if let s = m.sheet, let g = m.G(s.id) {
             SheetBody(top: 10) {
-                Text(g.name).font(.serif(26)).foregroundStyle(c.ink).padding(.bottom, 8)
+                Text(g.name).font(.sans(26, .medium)).foregroundStyle(c.ink).padding(.bottom, 8)
                 Eyebrow("Notifications from this group")
                 Seg(options: ["Everything", "Milestones", "Off"].map { ($0, $0) }, selected: g.notif) { m.setGroupNotif(g.id, $0) }
                     .padding(.top, 10).padding(.bottom, 14)
@@ -792,7 +792,7 @@ struct InviteFriendsSheet: View {
                 SheetHead {
                     VStack(alignment: .leading, spacing: 6) {
                         Eyebrow("Invite to", acc: true)
-                        Text(g.name).font(.serif(26))
+                        Text(g.name).font(.sans(26, .medium))
                     }
                 }
                 SheetBody {
