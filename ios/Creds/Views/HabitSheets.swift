@@ -508,7 +508,7 @@ struct ProofSheet: View {
                             .frame(maxHeight: .infinity, alignment: .bottom).padding(.bottom, 20)
                         Color.white.opacity(flash).allowsHitTesting(false)
                     }
-                    .aspectRatio(3/4, contentMode: .fit)
+                    .frame(height: 270)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .onChange(of: s.flash) { _, _ in
