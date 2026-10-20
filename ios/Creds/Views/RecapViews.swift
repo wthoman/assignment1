@@ -143,8 +143,6 @@ private struct Ticket: View {
                 }
                 LinearGradient(stops: [.init(color: .clear, location: 0.3), .init(color: Color(red: 10 / 255, green: 2 / 255, blue: 4 / 255).opacity(0.75), location: 1)],
                                startPoint: .top, endPoint: .bottom)
-                // Black overlay for better readability
-                Color.black.opacity(0.3)
             }
         )
         .overlay(alignment: .topTrailing) {
@@ -205,11 +203,6 @@ struct RecapCurtain: View {
                 // the floor bleeds past the edges; keep it from widening the stage (and pushing slides off-screen)
                 .frame(width: g.size.width)
 
-                // Semi-transparent black overlay for better readability
-                Color.black.opacity(0.3)
-                    .ignoresSafeArea()
-                    .zIndex(10)
-
                 if let r = picks {
                     ForEach(0..<slideCount, id: \.self) { i in
                         RecapSlide(index: i, picks: r, onShow: i == index)
@@ -251,14 +244,6 @@ struct RecapCurtain: View {
                 }
                 .allowsHitTesting(false)
                 .zIndex(25)
-
-                // intro background overlay
-                Color.black.opacity(0.3)
-                    .ignoresSafeArea()
-                    .opacity(opened ? 0 : 1)
-                    .animation(.easeOut(duration: 0.6), value: opened)
-                    .allowsHitTesting(false)
-                    .zIndex(28)
 
                 // intro
                 VStack(spacing: 0) {
