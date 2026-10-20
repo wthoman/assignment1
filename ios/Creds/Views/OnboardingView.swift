@@ -272,3 +272,8 @@ struct JoinButton: View {
         .buttonStyle(.press)
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Onboarding · Welcome") { CredsPreview(onboarding: true) }
+#Preview("Onboarding · Account") { CredsPreview(onboarding: true) { $0.step = 1 } }

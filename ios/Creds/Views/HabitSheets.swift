@@ -18,29 +18,29 @@ struct DetailsSheet: View {
         if let s = m.sheet, let h = m.H(s.id) {
             let t = c.today, g = m.G(h.group), d = m.isDone(h, "me")
             VStack(spacing: 0) {
-                HStack(alignment: .top, spacing: 16) {
-                    HIcon(h.ic, 44).foregroundStyle(.white)
-                        .frame(width: 76, height: 76)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(t.red))
+                HStack(alignment: .top, spacing: 14) {
+                    HIcon(h.ic, 34).foregroundStyle(.white)
+                        .frame(width: 60, height: 60)
+                        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(t.red))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(h.name).font(.system(size: 30, weight: .bold, design: .serif)).foregroundStyle(t.ink)
+                        Text(h.name).font(.system(size: 24, weight: .bold, design: .serif)).foregroundStyle(t.ink)
                             .lineLimit(2).minimumScaleFactor(0.7)
                             .accessibilityAddTraits(.isHeader)
                         Text([g?.name ?? "Just me", h.freq, h.time].joined(separator: " • "))
-                            .font(.sans(17)).foregroundStyle(t.muted).lineLimit(2)
+                            .font(.sans(14)).foregroundStyle(t.muted).lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 6)
+                    .padding(.top, 4)
                     Button { m.closeSheet() } label: {
-                        Ico(.x, 26).foregroundStyle(t.muted).frame(width: 44, height: 44).contentShape(Rectangle())
+                        Ico(.x, 20).foregroundStyle(t.muted).frame(width: 44, height: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.press)
                     .padding(.trailing, -8)
                     .accessibilityLabel("Close")
                 }
                 .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 4)
-                SheetBody(top: 18) {
-                    HStack(spacing: 16) {
+                SheetBody(top: 16) {
+                    HStack(spacing: 12) {
                         if d {
                             OutlineButton(icon: .camera, label: "Your Photo") { m.viewPost(h.id, "me") }
                         } else {
@@ -52,16 +52,16 @@ struct DetailsSheet: View {
                             OutlineButton(icon: .invite, label: "Add Friends") { m.makeGroup(h.id) }
                         }
                     }
-                    StreakWeek(h: h).padding(.top, 34)
+                    StreakWeek(h: h).padding(.top, 26)
                     HStack(alignment: .firstTextBaseline) {
-                        Text("Today’s Photos").font(.sans(24, .semibold)).foregroundStyle(t.text)
+                        Text("Today’s Photos").font(.sans(19, .semibold)).foregroundStyle(t.text)
                             .accessibilityAddTraits(.isHeader)
                         Spacer(minLength: 8)
                         if m.shared(h) && !m.isLarge(h) {
-                            Text("\(m.doneCount(h)) of \(m.peopleOf(h).count) done").font(.sans(14)).foregroundStyle(t.muted)
+                            Text("\(m.doneCount(h)) of \(m.peopleOf(h).count) done").font(.sans(13)).foregroundStyle(t.muted)
                         }
                     }
-                    .padding(.top, 34).padding(.bottom, 18)
+                    .padding(.top, 26).padding(.bottom, 12)
                     TodayStrip(h: h)
                     if g == nil {
                         Button("Delete habit") { m.deleteHabit(h.id) }.buttonStyle(Btn(kind: .ghost, fg: t.red)).padding(.top, 18)
@@ -106,60 +106,60 @@ struct StreakWeek: View {
         VStack(alignment: .leading, spacing: 0) {
             Button { withAnimation(.easeOut(duration: 0.25)) { open.toggle() } } label: {
                 HStack {
-                    Text("Your streak").font(.sans(24, .semibold)).foregroundStyle(t.text)
+                    Text("Your streak").font(.sans(19, .semibold)).foregroundStyle(t.text)
                     Spacer(minLength: 8)
-                    Ico(.chev, 22).foregroundStyle(t.muted).rotationEffect(.degrees(open ? 0 : -90))
+                    Ico(.chev, 18).foregroundStyle(t.muted).rotationEffect(.degrees(open ? 0 : -90))
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(.isHeader)
             .accessibilityLabel(open ? "Your streak, hide week" : "Your streak, show week")
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(n)").font(.sans(44, .bold)).foregroundStyle(t.red)
-                Text(n == 1 ? "day" : "days").font(.sans(28)).foregroundStyle(t.red)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(n)").font(.sans(34, .bold)).foregroundStyle(t.red)
+                Text(n == 1 ? "day" : "days").font(.sans(20)).foregroundStyle(t.red)
             }
-            .padding(.top, 14)
+            .padding(.top, 8)
             if open {
                 HStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in
                         let k = m.dayMark(h, d), today = Day.cal.isDate(d, inSameDayAs: Seed.today)
-                        VStack(spacing: 10) {
-                            Text(Day.fmt(d, "EEE")).font(.sans(16, today ? .bold : .regular))
+                        VStack(spacing: 7) {
+                            Text(Day.fmt(d, "EEE")).font(.sans(13, today ? .bold : .regular))
                                 .foregroundStyle(today ? t.ink : t.muted)
-                            DayDot(mark: k)
+                            DayDot(mark: k, size: 34)
                         }
                         .frame(maxWidth: .infinity)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(Day.fmt(d, "EEEEMMMMd")), \(k.label)")
                     }
                 }
-                .padding(.top, 16)
+                .padding(.top, 12)
                 DayLegend()
-                    .padding(.top, 14)
+                    .padding(.top, 12)
                     .transition(.opacity)
                 Button { toggleCalendar() } label: {
                     HStack(spacing: 8) {
-                        Ico(.cal, 18)
-                        Text(calOpen ? "Hide calendar" : "Show calendar").font(.sans(16, .medium))
+                        Ico(.cal, 16)
+                        Text(calOpen ? "Hide calendar" : "Show calendar").font(.sans(14, .medium))
                         Spacer(minLength: 0)
-                        Ico(.chev, 16).rotationEffect(.degrees(calOpen ? 180 : 0))
+                        Ico(.chev, 14).rotationEffect(.degrees(calOpen ? 180 : 0))
                     }
                     // the label swaps instantly, never cross-fades
                     .transaction { $0.animation = nil }
                     .foregroundStyle(c.today.red)
-                    .padding(.horizontal, 14).frame(height: 46)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(c.today.card))
+                    .padding(.horizontal, 12).frame(height: 40)
+                    .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(c.today.card))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle(dims: false))
-                .padding(.top, 16)
+                .padding(.top, 12)
                 .accessibilityLabel(calOpen ? "Hide calendar" : "Show calendar")
                 .accessibilityHint("Month by month history for this task")
                 if showCal {
                     TaskCalendar(h: h)
                         .opacity(calOpacity)
-                        .padding(.top, 16)
+                        .padding(.top, 12)
                         .transition(.identity)
                 }
             }
@@ -189,40 +189,40 @@ struct TaskCalendar: View {
         VStack(spacing: 0) {
             HStack {
                 Button { offset -= 1 } label: {
-                    Ico(.left, 18).frame(width: 44, height: 44).contentShape(Rectangle())
+                    Ico(.left, 16).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .disabled(!canBack).opacity(canBack ? 1 : 0.3)
                 .accessibilityLabel("Previous month")
                 Spacer()
-                Text(Day.fmt(first, "MMMMyyyy")).font(.system(size: 22, weight: .bold, design: .serif)).foregroundStyle(t.ink)
+                Text(Day.fmt(first, "MMMMyyyy")).font(.system(size: 18, weight: .bold, design: .serif)).foregroundStyle(t.ink)
                 Spacer()
                 Button { offset += 1 } label: {
-                    Ico(.right, 18).frame(width: 44, height: 44).contentShape(Rectangle())
+                    Ico(.right, 16).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .disabled(!canForward).opacity(canForward ? 1 : 0.3)
                 .accessibilityLabel("Next month")
             }
             .foregroundStyle(t.red)
-            .padding(.bottom, 6)
+            .padding(.bottom, 2)
             HStack(spacing: 4) {
                 ForEach(0..<7, id: \.self) { i in
-                    Text(String(Array("SMTWTFS")[i])).font(.sans(13, .semibold)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
+                    Text(String(Array("SMTWTFS")[i])).font(.sans(12, .semibold)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
                 }
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, 6)
             .accessibilityHidden(true)
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 ForEach(0..<padded.count / 7, id: \.self) { row in
                     HStack(spacing: 4) {
                         ForEach(0..<7, id: \.self) { col in
-                            if let d = padded[row * 7 + col] { cell(d) } else { Color.clear.frame(maxWidth: .infinity).frame(height: 42) }
+                            if let d = padded[row * 7 + col] { cell(d) } else { Color.clear.frame(maxWidth: .infinity).frame(height: 36) }
                         }
                     }
                 }
             }
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.mix(t.card, t.bg, 0.45)))
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.mix(t.card, t.bg, 0.45)))
     }
 
     /// The date inside the same marker as the week row: check = done, cross = missed, moon in a dashed ring = rest day.
@@ -240,17 +240,17 @@ struct TaskCalendar: View {
             }
             VStack(spacing: 0) {
                 Text("\(n)")
-                    .font(.sans(13, today || k == .done ? .bold : .medium))
+                    .font(.sans(12, today || k == .done ? .bold : .medium))
                     .foregroundStyle(k == .done ? .white : k == .missed ? missedInk : k == .upcoming || k == .none ? t.muted.opacity(0.6) : t.muted)
                 switch k {
-                case .done: Ico(.check, 10).foregroundStyle(.white)
-                case .missed: Ico(.x, 9).foregroundStyle(missedInk)
-                case .rest: Ico(.moon, 10).foregroundStyle(t.muted)
+                case .done: Ico(.check, 9).foregroundStyle(.white)
+                case .missed: Ico(.x, 8).foregroundStyle(missedInk)
+                case .rest: Ico(.moon, 9).foregroundStyle(t.muted)
                 default: EmptyView()
                 }
             }
         }
-        .frame(width: 42, height: 42)
+        .frame(width: 36, height: 36)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(Day.fmt(d, "EEEEMMMMd")), \(k.label)")
@@ -308,12 +308,12 @@ struct OutlineButton: View {
     var body: some View {
         let t = c.today, shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
         Button(action: action) {
-            HStack(spacing: 10) {
-                Ico(icon, 22)
-                Text(label).font(.sans(17, .medium)).lineLimit(1).minimumScaleFactor(0.8)
+            HStack(spacing: 8) {
+                Ico(icon, 18)
+                Text(label).font(.sans(15, .medium)).lineLimit(1).minimumScaleFactor(0.8)
             }
             .foregroundStyle(t.red)
-            .frame(maxWidth: .infinity).frame(height: 50)
+            .frame(maxWidth: .infinity).frame(height: 42)
             .background(shape.fill(t.bg))
             .overlay(shape.strokeBorder(t.red, lineWidth: 1.2))
             .contentShape(shape)
@@ -730,3 +730,8 @@ struct CommentsSheet: View {
         }
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Habit details") { CredsPreview { $0.openDetails("water") } }
+#Preview("New habit") { CredsPreview { $0.openCreate() } }

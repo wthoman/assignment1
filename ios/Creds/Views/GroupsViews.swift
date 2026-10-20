@@ -264,7 +264,7 @@ private struct GroupCard: View {
                     .padding(.top, 10)
                 }
             }
-            .card(v: 12, h: 14)
+            .card(v: 12, h: 14, fill: c.card, outline: c.line)
         }
         .buttonStyle(.press)
         .padding(.bottom, 10)
@@ -808,3 +808,9 @@ struct InviteFriendsSheet: View {
         }
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Groups") { CredsPreview { $0.selectTab(.groups) } }
+#Preview("Group page") { CredsPreview { $0.selectTab(.groups); $0.openGroup("hydration") } }
+#Preview("Discover") { CredsPreview { $0.selectTab(.groups); $0.push(.discover) } }

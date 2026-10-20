@@ -179,3 +179,7 @@ private struct InfoRow: View {
         }
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Trophies") { CredsPreview { $0.selectTab(.trophies) } }

@@ -588,3 +588,7 @@ private struct ShareItem: View {
         .buttonStyle(.press)
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Recap") { CredsPreview { $0.selectTab(.recap) } }

@@ -11,7 +11,7 @@ struct TodayView: View {
         let t = c.today
         Page { proxy in
             TodayHeader()
-            WeekStrip().padding(.top, 18)
+            WeekStrip().padding(.top, 28)
             StarHero().padding(.top, 26)
             HStack(spacing: 12) {
                 Text(m.day == 6 ? "Today’s Tasks" : "\(Day.weekday(Day.date(m.day)))’s Tasks").font(.sans(24, .bold)).foregroundStyle(t.text)
@@ -74,20 +74,20 @@ private struct WeekStrip: View {
         let t = c.today
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
+                HStack(spacing: 12) {
                     ForEach(stripDays, id: \.self) { i in
                         let date = Day.date(i), sel = m.day == i, fut = i > 6, today = i == 6
                         Button { withAnimation(.easeOut(duration: 0.2)) { m.selectDay(i) } } label: {
-                            VStack(spacing: 10) {
-                                Text(Day.fmt(date, "EEE")).font(.sans(15, sel ? .semibold : .regular))
+                            VStack(spacing: 7) {
+                                Text(Day.fmt(date, "EEE")).font(.sans(13, sel ? .semibold : .regular))
                                     .foregroundStyle(sel ? t.ink : t.muted)
                                 Text("\(Day.cal.component(.day, from: date))")
-                                    .font(.sans(16, sel || today ? .semibold : .regular))
+                                    .font(.sans(14, sel || today ? .semibold : .regular))
                                     .foregroundStyle(sel ? .white : today ? t.red : t.muted)
-                                    .frame(width: 46, height: 46)
+                                    .frame(width: 38, height: 38)
                                     .background(Circle().fill(sel ? t.red : t.circle))
                             }
-                            .frame(width: 50)
+                            .frame(width: 44)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -112,10 +112,10 @@ private struct StarHero: View {
     @Environment(\.pal) private var c
     var body: some View {
         ZStack(alignment: .bottom) {
-            Ellipse().fill(c.today.shadow).frame(width: 276, height: 60)
+            Ellipse().fill(c.today.shadow).frame(width: 207, height: 45)
             Image("Star").resizable().scaledToFit()
-                .frame(width: 200)
-                .padding(.bottom, 26)
+                .frame(width: 150)
+                .padding(.bottom, 20)
         }
         .frame(maxWidth: .infinity)
         .accessibilityHidden(true)
@@ -161,12 +161,12 @@ private struct HabitList: View {
 
     @ViewBuilder private func section(_ title: String, _ list: [Habit], empty: String) -> some View {
         let t = c.today
-        Text("\(title) (\(list.count))").font(.sans(18, .semibold)).foregroundStyle(t.section)
-            .padding(.horizontal, 2).padding(.bottom, title == "Rest day" ? 2 : 10)
+        Text("\(title) (\(list.count))").font(.sans(16, .semibold)).foregroundStyle(t.section)
+            .padding(.horizontal, 2).padding(.bottom, title == "Rest day" ? 2 : 8)
             .accessibilityAddTraits(.isHeader)
         if title == "Rest day" {
             Text("Not on the schedule \(m.day == 6 ? "today" : "this day"). Checking in still counts.")
-                .font(.sans(13)).foregroundStyle(t.muted).padding(.horizontal, 2).padding(.bottom, 10)
+                .font(.sans(13)).foregroundStyle(t.muted).padding(.horizontal, 2).padding(.bottom, 8)
         }
         if list.isEmpty {
             Text(empty).font(.sans(14)).foregroundStyle(t.muted).padding(.horizontal, 2).padding(.bottom, 6)
@@ -189,26 +189,31 @@ struct HabitCard: View {
     var body: some View {
         let t = c.today
         let d = readonly ? m.week(h, "me")[dayIdx] != 0 : m.isDone(h, "me")
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        HStack(spacing: 16) {
-            HIcon(h.ic, 34).foregroundStyle(.white)
-                .frame(width: 60, height: 60)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(t.red))
-            VStack(alignment: .leading, spacing: 9) {
-                Text(h.name).font(.sans(16, .medium)).foregroundStyle(t.text).lineLimit(2)
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        let tile = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        HStack(spacing: 12) {
+            // a soft tile like the Groups icons; it turns solid red once you've checked in
+            HIcon(h.ic, 24).foregroundStyle(d ? .white : t.red)
+                .frame(width: 44, height: 44)
+                .background(tile.fill(d ? t.red : c.tile))
+                .overlay { if !d { tile.strokeBorder(c.line.opacity(0.7), lineWidth: 1) } }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(h.name).font(.sans(15, .medium)).foregroundStyle(t.text).lineLimit(2)
                 DoneCircles(h: h, readonly: readonly, dayIdx: dayIdx)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            CheckButton(done: d, readonly: readonly, name: h.name, tint: t.red, size: 30) { m.check(h.id) }
+            CheckButton(done: d, readonly: readonly, name: h.name, tint: t.red, size: 26) { m.check(h.id) }
         }
-        .padding(.leading, 14).padding(.trailing, 16).padding(.vertical, 14)
-        .background(shape.fill(t.card))
+        .padding(.leading, 12).padding(.trailing, 12).padding(.vertical, 10)
+        // hairline card: an outline, no shadow (shadows are for floating things like the tab bar)
+        .background(shape.fill(c.card))
+        .overlay(shape.strokeBorder(c.line, lineWidth: 1))
         .contentShape(shape)
         // the whole card opens the task; the check keeps its own tap
         .onTapGesture { if !readonly { m.openDetails(h.id) } }
         .accessibilityElement(children: .contain)
         .accessibilityAction(named: "Open details") { if !readonly { m.openDetails(h.id) } }
-        .padding(.bottom, 10)
+        .padding(.bottom, 8)
         .animation(.easeOut(duration: 0.25), value: d)
     }
 }
@@ -227,15 +232,15 @@ private struct DoneCircles: View {
         let ppl = ["me"] + m.peopleOf(h).filter { $0 != "me" }
         let isDone = { (p: String) in readonly ? m.week(h, p)[dayIdx] != 0 : m.isDone(h, p) }
         let shown = Array(ppl.prefix(maxShown)), more = ppl.count - shown.count
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             ForEach(shown, id: \.self) { p in
                 let on = isDone(p)
                 Circle().fill(on ? t.red : t.dot)
-                    .frame(width: 24, height: 24)
-                    .overlay { if on { Ico(.check, 11).foregroundStyle(.white) } }
+                    .frame(width: 18, height: 18)
+                    .overlay { if on { Ico(.check, 9).foregroundStyle(.white) } }
             }
             if more > 0 {
-                Text("+\(more)").font(.sans(12, .semibold)).foregroundStyle(t.section).padding(.leading, 2)
+                Text("+\(more)").font(.sans(11, .semibold)).foregroundStyle(t.section).padding(.leading, 2)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -461,3 +466,8 @@ struct PersonTile: View {
         return h.mem[p]?.done ?? ""
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Today") { CredsPreview() }
+#Preview("Today · Stage theme") { CredsPreview(theme: .stage) }

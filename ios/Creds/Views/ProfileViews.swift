@@ -276,3 +276,8 @@ struct EditProfileSheet: View {
         }
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Profile") { CredsPreview { $0.push(.profile) } }
+#Preview("Settings") { CredsPreview { $0.push(.profile); $0.push(.settings) } }

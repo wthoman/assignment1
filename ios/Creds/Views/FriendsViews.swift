@@ -354,3 +354,8 @@ struct InviteHabitSheet: View {
         }
     }
 }
+
+// MARK: - Previews (Editor → Canvas)
+
+#Preview("Friends") { CredsPreview { $0.selectTab(.groups); $0.push(.friends) } }
+#Preview("Notifications") { CredsPreview { $0.push(.notifs) } }
