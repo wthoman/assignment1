@@ -79,6 +79,8 @@ struct StreakWeek: View {
     @Environment(\.pal) private var c
     let h: Habit
     @State private var open = true
+    /// The month calendar starts hidden each time the task opens.
+    @State private var showCal = false
 
     var body: some View {
         let t = c.today, n = m.streak(h, "me")
@@ -119,10 +121,113 @@ struct StreakWeek: View {
                 DayLegend()
                     .padding(.top, 14)
                     .transition(.opacity)
+                Button { withAnimation(.easeOut(duration: 0.25)) { showCal.toggle() } } label: {
+                    HStack(spacing: 8) {
+                        Ico(.cal, 18)
+                        Text(showCal ? "Hide calendar" : "Show calendar").font(.sans(16, .medium))
+                        Spacer(minLength: 0)
+                        Ico(.chev, 16).rotationEffect(.degrees(showCal ? 180 : 0))
+                    }
+                    .foregroundStyle(c.today.red)
+                    .padding(.horizontal, 14).frame(height: 46)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(c.today.card))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.press)
+                .padding(.top, 16)
+                .accessibilityLabel(showCal ? "Hide calendar" : "Show calendar")
+                .accessibilityHint("Month by month history for this task")
+                if showCal {
+                    TaskCalendar(h: h)
+                        .padding(.top, 16)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
         }
     }
 
+}
+
+/// Month-by-month history for one task, back to when it started.
+struct TaskCalendar: View {
+    @Environment(AppModel.self) private var m
+    @Environment(\.pal) private var c
+    let h: Habit
+    /// 0 = this month, -1 = last month …
+    @State private var offset = 0
+
+    var body: some View {
+        let t = c.today
+        let thisMonth = Day.cal.dateInterval(of: .month, for: Seed.today)!.start
+        let first = Day.cal.date(byAdding: .month, value: offset, to: thisMonth)!
+        let earliest = Day.cal.dateInterval(of: .month, for: m.earliestHistory(h))!.start
+        let canBack = first > earliest, canForward = offset < 0
+        let days = Day.cal.range(of: .day, in: .month, for: first)!.count
+        let lead = Day.cal.component(.weekday, from: first) - 1   // Sunday-first, like the week row
+        let cells: [Date?] = Array(repeating: nil, count: lead) + (0..<days).map { Day.cal.date(byAdding: .day, value: $0, to: first) }
+        let padded = cells + Array(repeating: nil, count: (7 - cells.count % 7) % 7)
+        VStack(spacing: 0) {
+            HStack {
+                Button { withAnimation(.easeOut(duration: 0.2)) { offset -= 1 } } label: {
+                    Ico(.left, 18).frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .disabled(!canBack).opacity(canBack ? 1 : 0.3)
+                .accessibilityLabel("Previous month")
+                Spacer()
+                Text(Day.fmt(first, "MMMMyyyy")).font(.system(size: 22, weight: .bold, design: .serif)).foregroundStyle(t.ink)
+                Spacer()
+                Button { withAnimation(.easeOut(duration: 0.2)) { offset += 1 } } label: {
+                    Ico(.right, 18).frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .disabled(!canForward).opacity(canForward ? 1 : 0.3)
+                .accessibilityLabel("Next month")
+            }
+            .foregroundStyle(t.red)
+            .padding(.bottom, 6)
+            HStack(spacing: 4) {
+                ForEach(0..<7, id: \.self) { i in
+                    Text(String(Array("SMTWTFS")[i])).font(.sans(13, .semibold)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.bottom, 8)
+            .accessibilityHidden(true)
+            VStack(spacing: 6) {
+                ForEach(0..<padded.count / 7, id: \.self) { row in
+                    HStack(spacing: 4) {
+                        ForEach(0..<7, id: \.self) { col in
+                            if let d = padded[row * 7 + col] { cell(d) } else { Color.clear.frame(maxWidth: .infinity).frame(height: 42) }
+                        }
+                    }
+                }
+            }
+            .id(offset)
+            .transition(.opacity)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(t.card.opacity(0.45)))
+    }
+
+    private func cell(_ d: Date) -> some View {
+        let t = c.today, k = m.dayMark(h, d), today = Day.cal.isDate(d, inSameDayAs: Seed.today)
+        let n = Day.cal.component(.day, from: d)
+        return ZStack {
+            switch k {
+            case .done: Circle().fill(t.red)
+            case .missed: Circle().fill(Color(hex: 0xD6C8C3))
+            case .rest: Circle().strokeBorder(t.muted.opacity(0.7), style: StrokeStyle(lineWidth: 1.3, dash: [3, 3]))
+            case .pending: Circle().strokeBorder(t.ink.opacity(0.55), lineWidth: 1.6)
+            case .upcoming, .none: Color.clear
+            }
+            Text("\(n)")
+                .font(.sans(15, today ? .bold : k == .done ? .semibold : .regular))
+                .foregroundStyle(k == .done ? .white : k == .missed ? Color(hex: 0x6E625F) : k == .upcoming || k == .none ? t.muted.opacity(0.6) : t.muted)
+                .strikethrough(k == .missed, color: Color(hex: 0x6E625F))
+        }
+        .frame(width: 40, height: 40)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(Day.fmt(d, "EEEEMMMMd")), \(k.label)")
+    }
 }
 
 /// One day's marker: red check = done, grey cross = missed, dashed ring + moon = rest day, outline = today, empty = ahead.
@@ -146,7 +251,7 @@ struct DayDot: View {
             case .pending:
                 Circle().fill(t.card)
                 Circle().strokeBorder(t.ink.opacity(0.35), lineWidth: max(1, size / 30))
-            case .upcoming:
+            case .upcoming, .none:
                 Circle().fill(t.card)
             }
         }

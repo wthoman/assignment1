@@ -59,9 +59,11 @@ struct ToastState: Identifiable {
 }
 
 enum DayMark {
-    case done, missed, rest, pending, upcoming
+    /// `none`: before the task existed.
+    case done, missed, rest, pending, upcoming, none
     var label: String {
         switch self {
+        case .none: return "before this task started"
         case .done: return "done"
         case .missed: return "missed"
         case .rest: return "rest day"
@@ -383,7 +385,7 @@ final class AppModel {
         var mm = Ordered<Member>([("me", mem(0, [0, 0, 0, 0, 0, 0]))])
         if f.with == "friends" { f.friends.forEach { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } }
         if f.with == "group", let g = G(f.gid) { g.members.forEach { if $0 != "me" { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } } }
-        habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: freq, group: f.with == "group" ? f.gid : nil, mem: mm), at: 0)
+        habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: freq, group: f.with == "group" ? f.gid : nil, mem: mm, since: Seed.today), at: 0)
         closeSheet()
         if f.with == "group", let gid = f.gid {
             showToast("“\(name)” added to \(G(gid)?.name ?? "the group")")   // stay on the group page
@@ -418,10 +420,26 @@ final class AppModel {
     /// How one day of a habit reads: done, missed (scheduled, not done), rest (not on the schedule), today still open, or ahead.
     func dayMark(_ h: Habit, _ d: Date) -> DayMark {
         let diff = Day.cal.dateComponents([.day], from: d, to: Seed.today).day ?? 0
+        if let since = h.since, d < since { return .none }
+        if diff > 6 && h.since == nil && earliestHistory(h) > d { return .none }
         if diff >= 0 && diff <= 6 && week(h, "me")[6 - diff] != 0 { return .done }
+        if diff > 6 && scheduled(h, d) && pastDone(h, d) { return .done }
         if !scheduled(h, d) { return .rest }
         if diff < 0 { return .upcoming }
         return diff == 0 ? .pending : .missed
+    }
+
+    /// Demo history before the last 7 days: roughly 4 in 5 scheduled days done, stable per task and date.
+    private func pastDone(_ h: Habit, _ d: Date) -> Bool {
+        let n = Day.cal.ordinality(of: .day, in: .era, for: d) ?? 0
+        return (n * 7 + hashN(h.id) * 13) % 10 < 8
+    }
+
+    /// The first day the calendar can show for a task: its start, or three months back for demo tasks.
+    func earliestHistory(_ h: Habit) -> Date {
+        if let since = h.since { return since }
+        let back = Day.cal.date(byAdding: .month, value: -3, to: Seed.today) ?? Seed.today
+        return Day.cal.dateInterval(of: .month, for: back)?.start ?? back
     }
 
     func toggleDay(_ i: Int) {
@@ -484,7 +502,7 @@ final class AppModel {
             let hist = [0, 1, 1, 1, 1, 1].enumerated().map { k, v in k > 5 - s ? 1 : v }
             mm[p] = i == 0 ? mem(s, hist, "8:45 AM", sample: 0) : mem(s, hist)
         }
-        habits.append(Habit(id: c.id, name: c.habit ?? c.name, ic: c.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: c.id, mem: mm))
+        habits.append(Habit(id: c.id, name: c.habit ?? c.name, ic: c.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: c.id, mem: mm, since: Seed.today))
         var cc = Ordered<Int>([("me", 0)])
         for (i, p) in f.enumerated() { cc[p] = 3 + i }
         let goal = Int((Double(c.size) * 2.5).rounded())
@@ -502,7 +520,7 @@ final class AppModel {
             mm[p] = i < 2 ? mem(2 + i * 3, [0, 1, 1, 1, 1, 1], "\(8 + i):\(String(format: "%02d", 10 + i * 25)) AM", sample: i)
                           : mem(2 + i * 3, [0, 1, 1, 1, 1, 1])
         }
-        habits.append(Habit(id: "h-" + v.id, name: "Get outside", ic: v.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: v.id, mem: mm))
+        habits.append(Habit(id: "h-" + v.id, name: "Get outside", ic: v.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: v.id, mem: mm, since: Seed.today))
         var ch = v.ch
         ch.c["me"] = 0
         groups.append(HabitGroup(id: v.id, name: v.name, ic: v.ic, type: "friends", habit: "h-" + v.id, notif: "Everything", desc: v.desc, members: ["me"] + v.members, ch: ch, fin: [],
@@ -764,7 +782,7 @@ final class AppModel {
         let myCount = habits.reduce(0) { $0 + weekCount($1, "me") }
         let rows = stableSorted(required.map { h in
             let marks = (0..<7).map { dayMark(h, Day.date($0)) }
-            return WeekRow(h: h, n: marks.filter { $0 == .done }.count, due: marks.filter { $0 != .rest }.count, marks: marks)
+            return WeekRow(h: h, n: marks.filter { $0 == .done }.count, due: marks.filter { $0 != .rest && $0 != .none }.count, marks: marks)
         }) { a, b in
             // best share of due days first
             let ra = a.due > 0 ? a.n * 1000 / a.due : 0, rb = b.due > 0 ? b.n * 1000 / b.due : 0

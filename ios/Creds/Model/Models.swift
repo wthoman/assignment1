@@ -53,6 +53,8 @@ struct Habit: Identifiable {
     var group: String?
     var optional = false
     var mem: Ordered<Member>
+    /// First day the task existed for you; nil = long-running demo task with past months of history.
+    var since: Date? = nil
 }
 
 struct Challenge {
