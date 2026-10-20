@@ -461,7 +461,8 @@ struct GroupPageView: View {
         let g = m.G(id), inv = g == nil ? m.invites.first { $0.id == id } : nil
         if let info = g.map({ Info(name: $0.name, ic: $0.ic, type: $0.type, desc: $0.desc, size: $0.size, members: $0.members, ch: $0.ch, fin: $0.fin, notif: $0.notif) })
             ?? inv.map({ Info(name: $0.name, ic: $0.ic, type: "friends", desc: $0.desc, size: nil, members: $0.members, ch: $0.ch, fin: [], notif: "Everything") }) {
-            let isMember = g != nil, h = m.H(g?.habit)
+            let isMember = g != nil, ts = g.map { m.tasks(of: $0.id) } ?? []
+            let taskNames = ts.map(\.name)
             Page { _ in
                 NavBar(title: info.name) {
                     if isMember { IconBtn(label: "Group options", action: { m.groupMenu(id) }) { Ico(.more) } }
@@ -494,22 +495,11 @@ struct GroupPageView: View {
                 if !isMember {
                     Button("Join \(info.name)") { m.invJoin(id) }.buttonStyle(.btn).padding(.top, 12)
                 }
-                if let h {
-                    VStack(alignment: .leading, spacing: 0) {
-                        BlkHead(left: "Your streak") { DoneTodayLabel(done: m.isDone(h, "me")) }
-                        StreakBlock(h: h)
-                    }
-                    .card().blk()
-                    VStack(alignment: .leading, spacing: 0) {
-                        BlkHead(left: "Today’s photos · \(h.name)") {
-                            if !m.isLarge(h) { Eyebrow("\(m.doneCount(h)) of \(m.peopleOf(h).count)") }
-                        }
-                        TodayStrip(h: h, fill: c.bg2)
-                    }
-                    .blk()
+                if let g {
+                    GroupTasks(g: g, tasks: ts).blk()
                 }
                 if let ch = info.ch {
-                    ChallengeCard(gid: id, ch: ch, isMember: isMember, habitName: h?.name).blk()
+                    ChallengeCard(gid: id, ch: ch, isMember: isMember, habitName: taskNames.isEmpty ? nil : taskNames.joined(separator: " or ")).blk()
                 }
                 if !info.fin.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
@@ -528,17 +518,93 @@ struct GroupPageView: View {
                     }
                     .card().blk()
                 }
-                if isMember {
-                    if let h {
-                        Text("Counts toward challenges: \(Text(h.name).fontWeight(.bold).foregroundStyle(c.ink))")
-                            .font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 18)
+                if isMember && !taskNames.isEmpty {
+                    Text("Counts toward challenges: \(Text(taskNames.joined(separator: ", ")).fontWeight(.bold).foregroundStyle(c.ink))")
+                        .font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 18)
+                }
+                // last on the page; leaving lives in the ••• menu
+                if let g, !ts.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("Today’s Photos").font(.sans(24, .semibold)).foregroundStyle(c.today.text)
+                                .accessibilityAddTraits(.isHeader)
+                            Spacer(minLength: 8)
+                            if ts.count == 1 { PhotoCount(g: g, h: ts[0]) }
+                        }
+                        .padding(.bottom, 16)
+                        if ts.count == 1 {
+                            TodayStrip(h: ts[0])
+                        } else {
+                            // one grid per task
+                            ForEach(ts) { h in
+                                HStack(alignment: .firstTextBaseline) {
+                                    HStack(spacing: 8) {
+                                        HIcon(h.ic, 18).foregroundStyle(c.today.red)
+                                        Text(h.name).font(.sans(18, .semibold)).foregroundStyle(c.today.text)
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityAddTraits(.isHeader)
+                                    Spacer(minLength: 8)
+                                    PhotoCount(g: g, h: h)
+                                }
+                                .padding(.bottom, 12)
+                                TodayStrip(h: h).padding(.bottom, 28)
+                            }
+                        }
                     }
-                    Button(info.type == "community" ? "Leave community" : "Leave group") { m.leaveGroup(id) }
-                        .buttonStyle(Btn(kind: .ghost, fg: c.acc)).padding(.top, 8)
+                    .padding(.top, 30)
                 }
             }
         } else {
             Color.clear.onAppear { if m.topRoute?.id == id { m.back() } }
+        }
+    }
+}
+
+/// "2 of 5 done" for one task; hidden in groups over 15 people.
+private struct PhotoCount: View {
+    @Environment(AppModel.self) private var m
+    @Environment(\.pal) private var c
+    let g: HabitGroup
+    let h: Habit
+    var body: some View {
+        if m.groupSize(g) <= 15 {
+            Text("\(m.doneCount(h)) of \(m.peopleOf(h).count) done").font(.sans(14)).foregroundStyle(c.today.muted)
+        }
+    }
+}
+
+/// The group's tasks, each with its own schedule and check-ins, plus "Add task" for whoever may add one.
+private struct GroupTasks: View {
+    @Environment(AppModel.self) private var m
+    @Environment(\.pal) private var c
+    let g: HabitGroup
+    let tasks: [Habit]
+    var body: some View {
+        let t = c.today
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Tasks").font(.sans(24, .semibold)).foregroundStyle(t.text).accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                Text("\(tasks.count)").font(.sans(14)).foregroundStyle(t.muted)
+            }
+            .padding(.bottom, 12)
+            if tasks.isEmpty {
+                Text("No tasks yet.").font(.sans(14)).foregroundStyle(t.muted).padding(.bottom, 10)
+            }
+            ForEach(tasks) { h in HabitCard(h: h) }
+            if m.canAddTask(g) {
+                Button { m.openCreate(in: g.id) } label: { Ico(.plus, 18); Text("Add task") }
+                    .buttonStyle(Btn(kind: .line, fg: t.red))
+                    .padding(.top, 2)
+            } else {
+                HStack(spacing: 6) {
+                    Ico(.lock, 13)
+                    Text("Only admins can add tasks to this group.")
+                }
+                .font(.sans(13)).foregroundStyle(t.muted).padding(.top, 2)
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 }
@@ -625,6 +691,7 @@ private struct ContribRow: View {
 
 struct CreateGroupSheet: View {
     @Environment(AppModel.self) private var m
+    @Environment(\.pal) private var c
     var body: some View {
         if let s = m.sheet {
             VStack(spacing: 0) {
@@ -643,6 +710,12 @@ struct CreateGroupSheet: View {
                     FriendPicker(list: m.friends, selected: s.friends) { p in
                         if let i = m.sheet?.friends.firstIndex(of: p) { m.sheet?.friends.remove(at: i) } else { m.sheet?.friends.append(p) }
                     }
+                    Lbl(text: "Who can add tasks")
+                    Seg(options: [(TaskPerm.admins.rawValue, "Only admins"), (TaskPerm.members.rawValue, "Any member")], selected: s.perm.rawValue) {
+                        m.sheet?.perm = TaskPerm(rawValue: $0) ?? .members
+                    }
+                    Text(s.perm == .admins ? "Just you (and admins you add) can create tasks in this group." : "Everyone in the group can create tasks.")
+                        .font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 6)
                     Lbl(text: "First challenge (optional)")
                     Field(label: "Goal", placeholder: "e.g. 30 early nights this week", text: m.field(\.goal))
                     Button("Create group") { m.groupGo() }.buttonStyle(.btn).padding(.top, 16)
@@ -683,6 +756,14 @@ struct GroupMenuSheet: View {
                 Eyebrow("Notifications from this group")
                 Seg(options: ["Everything", "Milestones", "Off"].map { ($0, $0) }, selected: g.notif) { m.setGroupNotif(g.id, $0) }
                     .padding(.top, 10).padding(.bottom, 14)
+                Eyebrow("Who can add tasks")
+                Seg(options: [(TaskPerm.admins.rawValue, "Only admins"), (TaskPerm.members.rawValue, "Any member")], selected: g.taskPerm.rawValue) {
+                    m.setTaskPerm(g.id, TaskPerm(rawValue: $0) ?? .members)
+                }
+                .padding(.top, 10)
+                .disabled(!m.isAdmin(g)).opacity(m.isAdmin(g) ? 1 : 0.55)
+                Text(m.isAdmin(g) ? "You’re an admin of this group." : "Only admins can change this.")
+                    .font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 6).padding(.bottom, 14)
                 if g.type == "friends" {
                     Button { m.inviteFriends(g.id) } label: {
                         SetRow(first: true, icon: .invite, title: "Invite friends") { Ico(.right).foregroundStyle(c.ink) }

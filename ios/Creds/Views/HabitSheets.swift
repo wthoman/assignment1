@@ -236,10 +236,15 @@ struct CreateHabitSheet: View {
                         .padding(.top, 12)
                     }
                     if s.with == "group" {
+                        // only groups that let you add tasks
+                        let open = m.groups.filter(m.canAddTask)
                         FlowLayout(spacing: 6) {
-                            ForEach(m.groups) { g in Chip(label: g.name, on: s.gid == g.id) { m.sheet?.gid = g.id } }
+                            ForEach(open) { g in Chip(label: g.name, on: s.gid == g.id) { m.sheet?.gid = g.id } }
                         }
                         .padding(.top, 12)
+                        if open.count < m.groups.count {
+                            Text("Groups where only admins add tasks aren’t listed.").font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 8)
+                        }
                     }
                 }
                 // pinned so it stays reachable however tall the form gets

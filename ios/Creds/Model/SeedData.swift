@@ -20,14 +20,30 @@ enum Seed {
         "theo": Person(name: "Theo", full: "Theo Martins", handle: "theom", av: "a8", bio: "Trying everything once. Meditation twice.", mutual: 1, since: "Jul 2026", strong: "Friday"),
         "noah": Person(name: "Noah", full: "Noah Haddad", handle: "noahh", av: "a10", bio: "Marathon training, slowly.", mutual: 2, since: "Jun 2026", strong: "Thursday"),
         "sofia": Person(name: "Sofia", full: "Sofia Reyes", handle: "sofiar", av: "a9", bio: "Plants, pilates and pretending I like mornings.")
-    ] }
+    ].merging(readers.map { r in
+        (r.id, Person(name: String(r.full.split(separator: " ")[0]), full: r.full, handle: r.full.lowercased().replacingOccurrences(of: " ", with: ""), av: "a1", bio: ""))
+    }) { a, _ in a } }
 
     static let friends = ["mina", "preston", "caitlyn", "ava", "jordan", "leo", "theo", "noah"]
+
+    /// Page Turners regulars who aren't friends (demo data for big-group photo grids).
+    static let readers: [(id: String, full: String, time: String)] = [
+        ("r1", "Amara Okoye", "6:12 AM"), ("r2", "Ben Carter", "6:40 AM"), ("r3", "Chloe Nguyen", "6:55 AM"), ("r4", "Diego Alvarez", "7:08 AM"),
+        ("r5", "Elif Demir", "7:15 AM"), ("r6", "Farah Malik", "7:21 AM"), ("r7", "Gus Lindqvist", "7:34 AM"), ("r8", "Hana Sato", "7:46 AM"),
+        ("r9", "Isaac Brooks", "7:58 AM"), ("r10", "Jade Thompson", "8:05 AM"), ("r11", "Kofi Mensah", "8:19 AM"), ("r12", "Lena Fischer", "8:27 AM"),
+        ("r13", "Marco Rossi", "8:44 AM"), ("r14", "Nadia Petrova", "9:02 AM"), ("r15", "Omar Haddad", "9:16 AM"), ("r16", "Priya Raman", "9:31 AM"),
+        ("r17", "Quinn Walsh", "9:48 AM"), ("r18", "Rosa Delgado", "10:03 AM"), ("r19", "Sam Whitaker", "10:20 AM"), ("r20", "Tara O’Neill", "10:37 AM"),
+        ("r21", "Uma Iyer", "11:02 AM"), ("r22", "Victor Hugo Lima", "11:25 AM"), ("r23", "Wren Adler", "11:51 AM"), ("r24", "Xavier Dubois", "12:14 PM"),
+        ("r25", "Yara Haddad", "12:40 PM"), ("r26", "Zoe Kim", "1:05 PM")
+    ]
 
     static func habits() -> [Habit] { [
         Habit(id: "water", name: "Drink 5L of water", ic: "water", time: "Anytime", tod: "anytime", freq: "Every day", group: "hydration",
               mem: Ordered([("me", mem(6, [1, 1, 1, 1, 1, 1])), ("mina", mem(13, [1, 1, 1, 1, 1, 1], "8:12 AM", sample: 0)), ("preston", mem(2, [1, 1, 1, 0, 1, 1])),
                             ("ava", mem(8, [1, 1, 1, 1, 1, 1], "10:40 AM", sample: 1)), ("jordan", mem(1, [0, 1, 1, 0, 0, 1]))])),
+        Habit(id: "plants", name: "Water plants", ic: "eat", time: "9:00 AM", tod: "morning", freq: "Mon, Thu", group: "hydration",
+              mem: Ordered([("me", mem(1, [0, 0, 0, 1, 0, 0])), ("mina", mem(2, [1, 0, 0, 1, 0, 0], "9:10 AM", sample: 2)), ("preston", mem(0, [0, 0, 0, 0, 0, 0])),
+                            ("ava", mem(1, [0, 0, 0, 1, 0, 0], "8:55 AM", sample: 0)), ("jordan", mem(0, [0, 0, 0, 0, 0, 0]))])),
         Habit(id: "run", name: "Morning run", ic: "run", time: "6:30 AM", tod: "morning", freq: "Weekdays", group: "run",
               mem: Ordered([("me", mem(3, [1, 1, 0, 1, 1, 1], "6:31 AM", caption: "Slow, but done.", sample: 0)), ("preston", mem(11, [1, 1, 1, 1, 1, 1], "6:04 AM", sample: 1)),
                             ("leo", mem(5, [0, 1, 1, 1, 1, 1], "6:20 AM", sample: 2)), ("theo", mem(1, [1, 0, 1, 0, 0, 1]))])),
@@ -35,7 +51,8 @@ enum Seed {
               mem: Ordered([("me", mem(4, [1, 0, 1, 1, 1, 1])), ("mina", mem(9, [1, 1, 1, 1, 1, 1], "1:15 PM", sample: 0)),
                             ("preston", mem(0, [1, 1, 1, 1, 1, 0])), ("caitlyn", mem(7, [1, 1, 1, 1, 1, 1], "4:20 PM", sample: 1))])),
         Habit(id: "read", name: "Read 20 pages", ic: "read", time: "9:30 PM", tod: "evening", freq: "Every day", group: "pageturners",
-              mem: Ordered([("me", mem(2, [1, 1, 0, 0, 1, 1])), ("caitlyn", mem(15, [1, 1, 1, 1, 1, 1], "7:02 AM", sample: 0)), ("noah", mem(0, [1, 0, 1, 0, 0, 0]))])),
+              mem: Ordered([("me", mem(2, [1, 1, 0, 0, 1, 1])), ("caitlyn", mem(15, [1, 1, 1, 1, 1, 1], "7:02 AM", sample: 0)), ("noah", mem(0, [1, 0, 1, 0, 0, 0]))]
+                           + readers.enumerated().map { i, r in (r.id, mem(i % 9, [1, 1, 1, 1, 1, 1], r.time, sample: i)) })),
         Habit(id: "calm", name: "Meditate 10 min", ic: "calm", time: "7:00 AM", tod: "morning", freq: "Every day", group: "calm",
               mem: Ordered([("me", mem(5, [0, 1, 1, 1, 1, 1])), ("ava", mem(12, [1, 1, 1, 1, 1, 1], "7:30 AM", sample: 2)), ("theo", mem(0, [0, 0, 1, 0, 1, 0]))])),
         Habit(id: "phone", name: "No phone after 11pm", ic: "phone", time: "10:45 PM", tod: "evening", freq: "Every day", group: nil,
@@ -49,27 +66,27 @@ enum Seed {
               desc: "Five friends, many water bottles, zero excuses.", members: ["me", "mina", "preston", "ava", "jordan"],
               ch: Challenge(title: "Drink water five days this week", detail: "Everyone logs a water day. Five each fills the jar.", unit: "water days", goal: 25, left: 4,
                             c: Ordered([("me", 3), ("mina", 6), ("preston", 5), ("ava", 5), ("jordan", 4)])),
-              fin: [Finished(t: "Hit 100 water days in September", r: "Goal reached · 112 water days", ok: true)]),
+              fin: [Finished(t: "Hit 100 water days in September", r: "Goal reached · 112 water days", ok: true)], admins: ["me"], taskPerm: .members),
         HabitGroup(id: "run", name: "6AM Run Club", ic: "run", type: "friends", habit: "run", notif: "Milestones",
               desc: "Sunrise miles, slow and steady. Walking breaks count.", members: ["me", "preston", "leo", "theo"],
               ch: Challenge(title: "Run 40 miles together this week", detail: "Every run counts, however short.", unit: "miles", goal: 40, left: 4,
                             c: Ordered([("me", 6), ("preston", 12), ("leo", 9), ("theo", 4)])),
-              fin: [Finished(t: "Run 120 miles in September", r: "98 of 120 · still counts", ok: false)]),
+              fin: [Finished(t: "Run 120 miles in September", r: "98 of 120 · still counts", ok: false)], admins: ["preston"], taskPerm: .admins),
         HabitGroup(id: "idsn", name: "IDSN 533 crew", ic: "study", type: "friends", habit: "study", notif: "Everything",
               desc: "Midterm mode. Two focused hours a day, then we rest.", members: ["me", "mina", "preston", "caitlyn"],
               ch: Challenge(title: "20 study blocks before the midterm", detail: "One block = two focused hours.", unit: "study blocks", goal: 20, left: 6,
                             c: Ordered([("me", 3), ("mina", 5), ("preston", 2), ("caitlyn", 4)])),
-              fin: []),
+              fin: [], admins: ["mina"], taskPerm: .members),
         HabitGroup(id: "pageturners", name: "Page Turners", ic: "read", type: "community", habit: "read", notif: "Milestones", size: 1284,
               desc: "Read 20 pages of anything, every day. Snap your page number as proof.", members: ["me", "caitlyn", "noah"],
               ch: Challenge(title: "1,000 pages this week", detail: "Every page anyone reads adds to the pile.", unit: "pages", goal: 1000, left: 4,
                             c: Ordered([("me", 60), ("caitlyn", 140), ("noah", 20)]), others: 592),
-              fin: [Finished(t: "Read 3,000 pages in September", r: "Goal reached · 3,240 pages", ok: true)]),
+              fin: [Finished(t: "Read 3,000 pages in September", r: "Goal reached · 3,240 pages", ok: true)], taskPerm: .admins),
         HabitGroup(id: "calm", name: "Calm Collective", ic: "calm", type: "community", habit: "calm", notif: "Off", size: 862,
               desc: "Ten quiet minutes a day. Any app, any method. Just sit.", members: ["me", "ava", "theo"],
               ch: Challenge(title: "500 quiet sessions this week", detail: "Ten minutes each. Breathe.", unit: "sessions", goal: 500, left: 4,
                             c: Ordered([("me", 5), ("ava", 6), ("theo", 2)]), others: 301),
-              fin: [])
+              fin: [], taskPerm: .admins)
     ] }
 
     static func invites() -> [Invite] { [

@@ -32,6 +32,7 @@ struct SheetState {
     /// Custom schedule: weekday indexes, Monday = 0.
     var days: [Int] = []
     var goal = ""
+    var perm: TaskPerm = .members
     var fromHabit: String? = nil
     // photo proof
     var shot = false
@@ -140,7 +141,8 @@ final class AppModel {
         return isDone(h, p)
     }
     /// Members on the habit's group (communities count everyone), or just the people on the habit.
-    func groupSize(_ h: Habit) -> Int { G(h.group).map { $0.size ?? $0.members.count } ?? peopleOf(h).count }
+    func groupSize(_ h: Habit) -> Int { G(h.group).map(groupSize) ?? peopleOf(h).count }
+    func groupSize(_ g: HabitGroup) -> Int { g.size ?? g.members.count }
     /// Big groups only show photos that were taken: no counts, no empty frames.
     func isLarge(_ h: Habit) -> Bool { groupSize(h) > 15 }
     func captionOf(_ h: Habit, _ p: String) -> String {
@@ -152,6 +154,11 @@ final class AppModel {
         return hs.isEmpty ? 0 : Double(hs.filter { week($0, "me")[i] != 0 }.count) / Double(hs.count)
     }
     func joined(_ id: String) -> Bool { G(id) != nil }
+    /// Every task in a group, in list order.
+    func tasks(of gid: String) -> [Habit] { habits.filter { $0.group == gid } }
+    /// Admins-only groups let just their admins add tasks; otherwise any member can.
+    func canAddTask(_ g: HabitGroup) -> Bool { g.taskPerm == .members || g.admins.contains("me") }
+    func isAdmin(_ g: HabitGroup) -> Bool { g.admins.contains("me") }
     func chTotal(_ ch: Challenge?) -> Int { guard let ch else { return 0 }; return ch.c.values.reduce(0, +) + (ch.others ?? 0) }
     var unreadCount: Int { notifs.filter(\.unread).count }
     var topRoute: Route? { stack.last }
@@ -345,12 +352,18 @@ final class AppModel {
     // MARK: - create habit
 
     func openCreate() { openSheet(SheetState(type: .create, name: "", ic: "water", freq: "Every day", with: "solo")) }
+    /// New task already pointed at a group (from the group page).
+    func openCreate(in gid: String) {
+        guard let g = G(gid), canAddTask(g) else { return }
+        openSheet(SheetState(type: .create, name: "", ic: g.ic, freq: "Every day", with: "group", gid: gid))
+    }
 
     func createGo() {
         guard let f = sheet else { return }
         let name = f.name.trimmingCharacters(in: .whitespaces)
         if name.isEmpty { showToast("Give your habit a name first", icon: .info); return }
         if f.with == "group" && f.gid == nil { showToast("Pick a group for this habit", icon: .info); return }
+        if f.with == "group", let g = G(f.gid), !canAddTask(g) { showToast("Only admins can add tasks to \(g.name)", icon: .lock); return }
         if f.freq == "Custom" && f.days.isEmpty { showToast("Pick at least one day", icon: .info); return }
         let freq = f.freq == "Custom" ? Self.freqLabel(f.days) : f.freq
         let id = "h" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36)
@@ -359,8 +372,12 @@ final class AppModel {
         if f.with == "group", let g = G(f.gid) { g.members.forEach { if $0 != "me" { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } } }
         habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: freq, group: f.with == "group" ? f.gid : nil, mem: mm), at: 0)
         closeSheet()
-        mode = .app; tab = .today; stack = []; day = 6; anim = id
-        showToast("“\(name)” added to your book")
+        if f.with == "group", let gid = f.gid {
+            showToast("“\(name)” added to \(G(gid)?.name ?? "the group")")   // stay on the group page
+        } else {
+            mode = .app; tab = .today; stack = []; day = 6; anim = id
+            showToast("“\(name)” added to your book")
+        }
     }
 
     static let weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -416,7 +433,7 @@ final class AppModel {
         groups.insert(HabitGroup(id: id, name: name, ic: f.ic, type: "friends", habit: f.fromHabit, notif: "Everything",
                             desc: desc.isEmpty ? "A new circle. Be kind, show up." : desc, members: members,
                             ch: goalText.isEmpty ? nil : Challenge(title: goalText, detail: "Your first challenge together.", unit: "check-ins", goal: goalN == 0 ? 20 : goalN, left: 7, c: c),
-                            fin: []), at: 0)
+                            fin: [], admins: ["me"], taskPerm: f.perm), at: 0)
         if let hid = f.fromHabit, let hi = hIndex(hid) {
             habits[hi].group = id
             f.friends.forEach { habits[hi].mem[$0] = mem(0, [0, 0, 0, 0, 0, 0]) }
@@ -452,7 +469,7 @@ final class AppModel {
         groups.append(HabitGroup(id: c.id, name: c.name, ic: c.ic, type: "community", habit: c.id, notif: "Milestones", size: c.size + 1, desc: c.desc, members: ["me"] + f,
                             ch: Challenge(title: "\(c.habit ?? c.name): \(goal.formatted()) check-ins this week", detail: "Everyone in the community adds to one total.", unit: "check-ins",
                                           goal: goal, left: 4, c: cc, others: Int((Double(c.size) * 1.6).rounded())),
-                            fin: []))
+                            fin: [], taskPerm: .admins))
         communities[ci].size += 1
     }
 
@@ -466,7 +483,8 @@ final class AppModel {
         habits.append(Habit(id: "h-" + v.id, name: "Get outside", ic: v.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: v.id, mem: mm))
         var ch = v.ch
         ch.c["me"] = 0
-        groups.append(HabitGroup(id: v.id, name: v.name, ic: v.ic, type: "friends", habit: "h-" + v.id, notif: "Everything", desc: v.desc, members: ["me"] + v.members, ch: ch, fin: []))
+        groups.append(HabitGroup(id: v.id, name: v.name, ic: v.ic, type: "friends", habit: "h-" + v.id, notif: "Everything", desc: v.desc, members: ["me"] + v.members, ch: ch, fin: [],
+                                 admins: [v.from], taskPerm: .members))
         invites.removeAll { $0.id == id }
         if let ni = notifs.firstIndex(where: { $0.group == id }) { notifs[ni].res = "Accepted"; notifs[ni].unread = false }
     }
@@ -499,6 +517,11 @@ final class AppModel {
         groups[gi].ch!.c["me"] = c - 1
     }
     func setGroupNotif(_ id: String, _ v: String) { if let gi = gIndex(id) { groups[gi].notif = v } }
+    /// Only an admin can change who adds tasks.
+    func setTaskPerm(_ id: String, _ v: TaskPerm) {
+        guard let gi = gIndex(id), isAdmin(groups[gi]) else { return }
+        groups[gi].taskPerm = v
+    }
 
     func groupMenu(_ id: String) { openSheet(SheetState(type: .groupmenu, id: id)) }
     func inviteFriends(_ id: String) { openSheet(SheetState(type: .invitefriends, id: id)) }
@@ -511,7 +534,7 @@ final class AppModel {
         for p in sel {
             groups[gi].members.append(p)
             if groups[gi].ch != nil { groups[gi].ch!.c[p] = 0 }
-            if let hid = groups[gi].habit, let hi = hIndex(hid) { habits[hi].mem[p] = mem(0, [0, 0, 0, 0, 0, 0]) }
+            for hi in habits.indices where habits[hi].group == id { habits[hi].mem[p] = mem(0, [0, 0, 0, 0, 0, 0]) }
         }
         closeSheet()
         showToast("Invited \(sel.map { person($0).name }.joined(separator: " and "))")
@@ -520,12 +543,12 @@ final class AppModel {
     func leaveGroup(_ id: String) {
         guard let gi = gIndex(id) else { return }
         let g = groups[gi]
-        let hi = g.habit.flatMap { hIndex($0) }
-        let snapH = hi.map { habits[$0] }
+        let snapHabits = habits
         groups.remove(at: gi)
-        if let hi {
-            if g.type == "community" { habits.remove(at: hi) }
-            else {
+        // community tasks go with the community; a friends group's tasks stay as your own
+        if g.type == "community" { habits.removeAll { $0.group == id } }
+        else {
+            for hi in habits.indices where habits[hi].group == id {
                 habits[hi].group = nil
                 for p in habits[hi].mem.keys where p != "me" { habits[hi].mem[p] = nil }
             }
@@ -535,10 +558,7 @@ final class AppModel {
         showToast("Left \(g.name)", undo: { [weak self] in
             guard let self else { return }
             self.groups.insert(g, at: min(gi, self.groups.count))
-            if let snapH, let hi {
-                if g.type == "community" { self.habits.insert(snapH, at: min(hi, self.habits.count)) }
-                else if let j = self.hIndex(snapH.id) { self.habits[j] = snapH }
-            }
+            self.habits = snapHabits
         }, icon: .leave)
     }
 

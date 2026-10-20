@@ -65,6 +65,10 @@ struct Challenge {
 
 struct Finished { var t, r: String; var ok: Bool }
 
+/// Who may add tasks to a group.
+enum TaskPerm: String { case admins, members }
+
+/// A group can hold several tasks: every habit whose `group` is this id. `habit` is the one it started with.
 struct HabitGroup: Identifiable {
     let id: String
     var name, ic, type: String
@@ -75,6 +79,9 @@ struct HabitGroup: Identifiable {
     var members: [String]
     var ch: Challenge?
     var fin: [Finished]
+    /// The creator and anyone they've made an admin.
+    var admins: [String] = []
+    var taskPerm: TaskPerm = .members
 }
 
 struct Invite: Identifiable {

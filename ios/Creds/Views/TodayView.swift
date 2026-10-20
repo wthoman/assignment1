@@ -330,27 +330,54 @@ struct DoneTodayLabel: View {
     }
 }
 
-/// Today's photos, three to a row: you first, then friends (done first, by time).
-/// Big groups show only the photos that were taken: no empty frames.
+/// One frame in a photo grid: a person's check-in on a task.
+struct PhotoEntry: Hashable {
+    let habit: String
+    let p: String
+}
+
+/// Today's photos for one task. Your frame (photo or "Take photo") is always first;
+/// then friends, done first by time. Big groups show everyone's taken photos and no empty frames.
 struct TodayStrip: View {
     @Environment(AppModel.self) private var m
-    @Environment(\.pal) private var c
     let h: Habit
-    /// Fill behind empty frames; defaults to the Today card colour.
-    var fill: Color? = nil
     var body: some View {
-        let others = stableSorted(m.peopleOf(h).filter { $0 != "me" }) { a, b in
+        let pool = m.isLarge(h) ? h.mem.keys.filter { $0 != "me" && m.hasPhoto(h, $0) } : m.peopleOf(h).filter { $0 != "me" }
+        let others = stableSorted(pool) { a, b in
             let da = m.isDone(h, a) ? 1 : 0, db = m.isDone(h, b) ? 1 : 0
             if db - da != 0 { return db - da }
             return da == 1 ? Day.tmin(h.mem[a]?.done ?? "") - Day.tmin(h.mem[b]?.done ?? "") : 0
         }
-        let all = ["me"] + others
-        let shown = m.isLarge(h) ? all.filter { m.hasPhoto(h, $0) } : all
-        if shown.isEmpty {
-            Text("No photos yet today.").font(.sans(15)).foregroundStyle(c.today.muted)
+        PhotoGrid(entries: (["me"] + others).map { PhotoEntry(habit: h.id, p: $0) })
+    }
+}
+
+/// Three-column photo grid: the first 9, then "Show More" adds 15 at a time.
+struct PhotoGrid: View {
+    @Environment(\.pal) private var c
+    let entries: [PhotoEntry]
+    @State private var limit = 9
+    var body: some View {
+        let t = c.today
+        if entries.isEmpty {
+            Text("No photos yet today.").font(.sans(15)).foregroundStyle(t.muted)
         } else {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16, alignment: .top), count: 3), spacing: 20) {
-                ForEach(shown, id: \.self) { p in PersonTile(h: h, p: p, fill: fill ?? c.today.card) }
+            VStack(spacing: 0) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16, alignment: .top), count: 3), spacing: 20) {
+                    ForEach(entries.prefix(limit), id: \.self) { e in PersonTile(entry: e) }
+                }
+                if entries.count > limit {
+                    let next = min(15, entries.count - limit)
+                    Button { withAnimation(.easeOut(duration: 0.25)) { limit += 15 } } label: {
+                        Text("Show More").font(.sans(16, .medium)).foregroundStyle(t.red)
+                            .frame(maxWidth: .infinity).frame(height: 46)
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(t.red, lineWidth: 1.2))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.press)
+                    .padding(.top, 22)
+                    .accessibilityHint("Shows \(next) more photo\(next == 1 ? "" : "s")")
+                }
             }
         }
     }
@@ -375,18 +402,20 @@ struct CheckinPhoto: View {
 struct PersonTile: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
-    let h: Habit
-    let p: String
-    let fill: Color
+    let entry: PhotoEntry
     var body: some View {
-        let t = c.today, me = p == "me", pic = m.hasPhoto(h, p)
+        if let h = m.H(entry.habit) { tile(h) }
+    }
+
+    @ViewBuilder private func tile(_ h: Habit) -> some View {
+        let p = entry.p, t = c.today, me = p == "me", pic = m.hasPhoto(h, p)
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         Button {
             if pic { m.viewPost(h.id, p) } else if me { m.check(h.id) }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
-                    fill
+                    t.card
                     if pic {
                         CheckinPhoto(h: h, p: p)
                     } else if me {
@@ -404,7 +433,7 @@ struct PersonTile: View {
                 .overlay { if me && !pic { shape.strokeBorder(t.red.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) } }
                 Text(m.person(p).full).font(.sans(16, .medium)).foregroundStyle(t.text)
                     .lineLimit(1).truncationMode(.tail).padding(.top, 10)
-                Text(pic ? photoTime : "Not yet").font(.sans(14)).foregroundStyle(t.muted).lineLimit(1).padding(.top, 2)
+                Text(pic ? photoTime(h) : "Not yet").font(.sans(14)).foregroundStyle(t.muted).lineLimit(1).padding(.top, 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
@@ -414,7 +443,8 @@ struct PersonTile: View {
     }
 
     /// When the photo was taken: your saved photo's time, otherwise the check-in time.
-    private var photoTime: String {
+    private func photoTime(_ h: Habit) -> String {
+        let p = entry.p
         if p == "me", h.mem["me"]?.proof == true, let item = m.storyItem(for: h.id) { return item.time }
         return h.mem[p]?.done ?? ""
     }
