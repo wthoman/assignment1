@@ -497,9 +497,38 @@ struct GroupPageView: View {
                 }
                 if let g {
                     GroupTasks(g: g, tasks: ts).blk()
-                }
-                if let ch = info.ch {
-                    ChallengeCard(gid: id, ch: ch, isMember: isMember, habitName: taskNames.isEmpty ? nil : taskNames.joined(separator: " or ")).blk()
+                    // Photos moved right under tasks
+                    if !ts.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("DELETE ME")
+                                    .accessibilityAddTraits(.isHeader)
+                                Spacer(minLength: 8)
+                                if ts.count == 1 { PhotoCount(g: g, h: ts[0]) }
+                            }
+                            .padding(.bottom, 16)
+                            if ts.count == 1 {
+                                TodayStrip(h: ts[0])
+                            } else {
+                                // one grid per task
+                                ForEach(ts) { h in
+                                    HStack(alignment: .firstTextBaseline) {
+                                        HStack(spacing: 8) {
+                                            HIcon(h.ic, 18).foregroundStyle(c.today.red)
+                                            Text(h.name).font(.sans(18, .semibold)).foregroundStyle(c.today.text)
+                                        }
+                                        .accessibilityElement(children: .combine)
+                                        .accessibilityAddTraits(.isHeader)
+                                        Spacer(minLength: 8)
+                                        PhotoCount(g: g, h: h)
+                                    }
+                                    .padding(.bottom, 12)
+                                    TodayStrip(h: h).padding(.bottom, 28)
+                                }
+                            }
+                        }
+                        .blk()
+                    }
                 }
                 if !info.fin.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
@@ -522,10 +551,11 @@ struct GroupPageView: View {
                     Text("Counts toward challenges: \(Text(taskNames.joined(separator: ", ")).fontWeight(.bold).foregroundStyle(c.ink))")
                         .font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 18)
                 }
-                // last on the page; leaving lives in the ••• menu
-                if let g, !ts.isEmpty {
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(alignment: .firstTextBaseline) {
+                // Challenge card at bottom of page
+                if let ch = info.ch {
+                    ChallengeCard(gid: id, ch: ch, isMember: isMember, habitName: taskNames.isEmpty ? nil : taskNames.joined(separator: " or ")).blk()
+                }
+            }
                             Text("Today’s Photos").font(.sans(24, .semibold)).foregroundStyle(c.today.text)
                                 .accessibilityAddTraits(.isHeader)
                             Spacer(minLength: 8)
@@ -552,9 +582,6 @@ struct GroupPageView: View {
                             }
                         }
                     }
-                    .padding(.top, 30)
-                }
-            }
         } else {
             Color.clear.onAppear { if m.topRoute?.id == id { m.back() } }
         }
