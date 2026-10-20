@@ -117,6 +117,10 @@ final class AppModel {
     var story: [StoryItem] = []
     /// Habit waiting on the "undo check-in?" confirmation.
     var pendingUncheck: String? = nil
+    /// Habit whose photo is waiting on the "remove photo?" confirmation.
+    var pendingRemovePhoto: String? = nil
+    /// Group waiting on the "leave?" confirmation.
+    var pendingLeave: String? = nil
     private let storyStore = StoryStore()
     private let photoStore = ProfilePhotoStore()
 
@@ -129,7 +133,26 @@ final class AppModel {
 
     private var toastTask: Task<Void, Never>? = nil
 
-    init() { story = storyStore.load(); myPhoto = photoStore.load() }
+    init() { story = storyStore.load(); myPhoto = photoStore.load(); alignDemo() }
+
+    /// The demo data isn't written for any particular date. Line its last week up with each task's schedule
+    /// (nothing done on rest days) and keep today's check-in times earlier than now.
+    private func alignDemo() {
+        let nowMin = Day.tmin(Seed.now)
+        for hi in habits.indices {
+            let h = habits[hi], todayOn = scheduled(h, Seed.today)
+            for (k, p) in h.mem.keys.enumerated() {
+                guard var r = h.mem[p] else { continue }
+                r.hist = r.hist.enumerated().map { i, v in scheduled(h, Day.date(i)) ? v : 0 }
+                if !todayOn {
+                    r.done = nil
+                } else if let t = r.done, Day.tmin(t) > nowMin {
+                    r.done = Day.clock(max(0, nowMin - 4 - k * 3))
+                }
+                habits[hi].mem[p] = r
+            }
+        }
+    }
 
     // MARK: - lookups
 
@@ -144,7 +167,24 @@ final class AppModel {
     func nameOf(_ p: String) -> String { p == "me" ? "You" : person(p).name }
 
     func isDone(_ h: Habit, _ p: String) -> Bool { h.mem[p]?.done != nil }
-    func streak(_ h: Habit, _ p: String) -> Int { guard let r = h.mem[p] else { return 0 }; return r.s + (r.done != nil ? 1 : 0) }
+    /// Your streak counts back through the same history the calendar shows: rest days are skipped, a missed scheduled day ends it.
+    /// Friends' streaks come from their records.
+    func streak(_ h: Habit, _ p: String) -> Int {
+        guard let r = h.mem[p] else { return 0 }
+        guard p == "me" else { return r.s + (r.done != nil ? 1 : 0) }
+        let first = earliestHistory(h)
+        var n = dayMark(h, Seed.today) == .done ? 1 : 0
+        var d = Seed.today
+        while let prev = Day.cal.date(byAdding: .day, value: -1, to: d), prev >= first {
+            d = prev
+            switch dayMark(h, d) {
+            case .done: n += 1
+            case .rest: continue
+            default: return n
+            }
+        }
+        return n
+    }
     func week(_ h: Habit, _ p: String) -> [Int] { guard let r = h.mem[p] else { return Array(repeating: 0, count: 7) }; return r.hist + [r.done != nil ? 1 : 0] }
     func weekCount(_ h: Habit, _ p: String) -> Int { week(h, p).reduce(0, +) }
     func peopleOf(_ h: Habit) -> [String] { h.mem.keys.filter { $0 == "me" || friends.contains($0) } }
@@ -346,6 +386,16 @@ final class AppModel {
     func openStory() { if !story.isEmpty { overlay = .story(UUID()) } }
     func viewPost(_ id: String, _ p: String) { openSheet(SheetState(type: .post, id: id, p: p)) }
     /// Without its photo the check-in no longer counts, so the task opens again.
+    func confirmRemovePhoto() {
+        guard let id = pendingRemovePhoto else { return }
+        pendingRemovePhoto = nil
+        removePhoto(id)
+    }
+    func confirmLeave() {
+        guard let id = pendingLeave else { return }
+        pendingLeave = nil
+        leaveGroup(id)
+    }
     func removePhoto(_ id: String) {
         guard let i = hIndex(id) else { return }
         if let item = storyItem(for: id) {
@@ -701,7 +751,7 @@ final class AppModel {
     /// Reached the award slide: the medal lands in the case.
     func recapReachedAward() {
         if let i = trophies.firstIndex(where: { $0.id == "t19" }), trophies[i].got == nil {
-            trophies[i].got = "Wk 40"; trophies[i].fresh = true
+            trophies[i].got = "Wk \(Day.weekNum())"; trophies[i].fresh = true
             Feedback.bigMoment(self)
         }
         recapSeen = true
@@ -736,6 +786,8 @@ final class AppModel {
         overlay = nil
         sheet = nil
         pendingUncheck = nil
+        pendingRemovePhoto = nil
+        pendingLeave = nil
         storyStore.removeAll()
         photoStore.remove()
         story = []
@@ -833,4 +885,18 @@ enum Day {
         return h * 60 + hm[1]
     }
     static func hasTime(_ h: Habit) -> Bool { h.time.contains { $0.isNumber } }
+    /// Minutes since midnight → "6:30 AM".
+    static func clock(_ minutes: Int) -> String {
+        let h = minutes / 60 % 24, mm = minutes % 60
+        return "\(h % 12 == 0 ? 12 : h % 12):\(String(format: "%02d", mm)) \(h < 12 ? "AM" : "PM")"
+    }
+    /// Week of the year holding `d`.
+    static func weekNum(_ d: Date = Seed.today) -> Int { cal.component(.weekOfYear, from: d) }
+    /// Last day of the 7-day stretch `weeksBack` weeks ago (0 = the stretch ending today).
+    static func weekEnd(_ weeksBack: Int) -> Date { cal.date(byAdding: .day, value: -7 * weeksBack, to: Seed.today)! }
+    /// "Oct 13 – Oct 19" for that stretch.
+    static func span(_ weeksBack: Int = 0) -> String {
+        let end = weekEnd(weeksBack), start = cal.date(byAdding: .day, value: -6, to: end)!
+        return "\(fmt(start, "MMMd")) – \(fmt(end, "MMMd"))"
+    }
 }

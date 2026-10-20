@@ -9,7 +9,7 @@ struct RecapHubView: View {
         let r = m.recapPicks()
         let sign = r.delta >= 0 ? "+" : "−"
         Page { _ in
-            GHead(eyebrow: "Week 40", title: "Recap") {
+            GHead(eyebrow: "Week \(Day.weekNum())", title: "Recap") {
                 IconBtn(label: "Share", action: { m.showToast("Recap card shared (mock)") }) { Ico(.share) }
             }
             Ticket(pct: r.pct, sign: sign, delta: abs(r.delta)).padding(.top, 12)
@@ -64,9 +64,10 @@ struct RecapHubView: View {
             .card().blk()
             Sec(title: "Past weeks")
             VStack(spacing: 0) {
-                ForEach(Array([("Sep", 21, "Two comebacks and a full Sunday", "27 check-ins · Comeback Kid"),
-                               ("Sep", 14, "Your steadiest week yet", "33 check-ins · Early Bird"),
-                               ("Sep", 7, "Small steps, still counted", "24 check-ins · Most Consistent")].enumerated()), id: \.offset) { i, w in
+                ForEach(Array([(Day.weekEnd(1), "Two comebacks and a full Sunday", "27 check-ins · Comeback Kid"),
+                               (Day.weekEnd(2), "Your steadiest week yet", "33 check-ins · Early Bird"),
+                               (Day.weekEnd(3), "Small steps, still counted", "24 check-ins · Most Consistent")]
+                    .map { (Day.fmt($0.0, "MMM"), Day.cal.component(.day, from: $0.0), $0.1, $0.2) }.enumerated()), id: \.offset) { i, w in
                     Button { m.playRecap() } label: {
                         Divided(first: i == 0) {
                             HStack(spacing: 12) {
@@ -125,7 +126,7 @@ private struct Ticket: View {
     let delta: Int
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Now showing · Sep 28 – Oct 4").font(.mono(10)).tracking(2.2).textCase(.uppercase).foregroundStyle(Brand.gold2)
+            Text("Now showing · \(Day.span())").font(.mono(10)).tracking(2.2).textCase(.uppercase).foregroundStyle(Brand.gold2)
             Text("Your week,\n\(Text("in review").italic())").font(.serif(38)).lineSpacing(-4).padding(.top, 10).padding(.bottom, 8)
             Text("\(pct)% of your check-ins done · \(sign)\(delta) pts vs the week before").font(.sans(13)).opacity(0.85)
             Button("Raise the curtain") { m.playRecap() }.buttonStyle(.btn(.cream)).padding(.top, 14)
@@ -250,7 +251,7 @@ struct RecapCurtain: View {
                     Text("Your week,\n\(Text("in review").italic())").font(.serif(66)).tracking(-1.3).lineSpacing(-8)
                         .foregroundStyle(.white).shadow(color: .black.opacity(0.5), radius: 15, y: 4)
                         .padding(.top, 16).padding(.bottom, 12)
-                    Text("Week 40 · Sep 28 – Oct 4").font(.mono(11)).tracking(1.5).textCase(.uppercase).foregroundStyle(Color(hex: 0xF0D2CC))
+                    Text("Week \(Day.weekNum()) · \(Day.span())").font(.mono(11)).tracking(1.5).textCase(.uppercase).foregroundStyle(Color(hex: 0xF0D2CC))
                     PulseLabel(text: "Tap to raise the curtain").padding(.top, 42)
                 }
                 .multilineTextAlignment(.center)

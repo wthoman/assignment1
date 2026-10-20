@@ -136,11 +136,18 @@ private struct HabitList: View {
             return ta == 1 ? Day.tmin(a.time) - Day.tmin(b.time) : 0
         }
         let done = { (h: Habit) in readonly ? m.week(h, "me")[m.day] != 0 : m.isDone(h, "me") }
-        let todo = sorted.filter { !done($0) }, completed = sorted.filter(done)
+        // not on the schedule that day (and not done anyway): a rest day, not a to-do
+        let date = Day.date(m.day)
+        let resting = { (h: Habit) in !done(h) && !m.scheduled(h, date) }
+        let todo = sorted.filter { !done($0) && !resting($0) }, completed = sorted.filter(done), rest = sorted.filter(resting)
         VStack(alignment: .leading, spacing: 0) {
             section("To-Do", todo, empty: readonly ? "Nothing was left undone." : "All done for today.")
             section("Completed", completed, empty: readonly ? "Nothing was checked off." : "Nothing checked off yet.")
                 .padding(.top, 14)
+            if !rest.isEmpty {
+                section("Rest day", rest, empty: "")
+                    .padding(.top, 14)
+            }
         }
         .onChange(of: m.anim) { _, id in
             guard let id else { return }
@@ -155,13 +162,18 @@ private struct HabitList: View {
     @ViewBuilder private func section(_ title: String, _ list: [Habit], empty: String) -> some View {
         let t = c.today
         Text("\(title) (\(list.count))").font(.sans(18, .semibold)).foregroundStyle(t.section)
-            .padding(.horizontal, 2).padding(.bottom, 10)
+            .padding(.horizontal, 2).padding(.bottom, title == "Rest day" ? 2 : 10)
             .accessibilityAddTraits(.isHeader)
+        if title == "Rest day" {
+            Text("Not on the schedule \(m.day == 6 ? "today" : "this day"). Checking in still counts.")
+                .font(.sans(13)).foregroundStyle(t.muted).padding(.horizontal, 2).padding(.bottom, 10)
+        }
         if list.isEmpty {
             Text(empty).font(.sans(14)).foregroundStyle(t.muted).padding(.horizontal, 2).padding(.bottom, 6)
         }
         ForEach(list) { h in
             HabitCard(h: h, readonly: readonly, dayIdx: m.day).id(h.id)
+                .opacity(title == "Rest day" ? 0.7 : 1)
                 .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
@@ -432,7 +444,7 @@ struct PersonTile: View {
                 .clipShape(shape)
                 .overlay { if me && !pic { shape.strokeBorder(t.red.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) } }
                 Text(m.person(p).full).font(.sans(16, .medium)).foregroundStyle(t.text)
-                    .lineLimit(1).truncationMode(.tail).padding(.top, 10)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true).padding(.top, 10)
                 Text(pic ? photoTime(h) : "Not yet").font(.sans(14)).foregroundStyle(t.muted).lineLimit(1).padding(.top, 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -130,7 +130,7 @@ enum Seed {
         Notif(id: "n3", kind: "reaction", who: "mina", title: "Mina loved your Morning run photo", body: "“Slow, but done.”", time: "3h", unread: true),
         Notif(id: "n4", kind: "comment", who: "preston", title: "Preston commented", body: "“See you at 6 tomorrow?”", time: "4h", unread: false),
         Notif(id: "n5", kind: "milestone", title: "Hydration Station hit 75%", body: "Two more water days fill the jar.", time: "5h", unread: false),
-        Notif(id: "n6", kind: "recap", title: "Your weekly recap is ready", body: "Week 40 · Sep 28 – Oct 4", time: "Mon", unread: false, earlier: true),
+        Notif(id: "n6", kind: "recap", title: "Your weekly recap is ready", body: "Week \(Day.weekNum(Day.weekEnd(1))) · \(Day.span(1))", time: "Mon", unread: false, earlier: true),
         Notif(id: "n7", kind: "award", title: "New medal: Week Unbroken", body: "7 days in a row on Drink 5L of water.", time: "Sat", unread: false, earlier: true)
     ] }
 

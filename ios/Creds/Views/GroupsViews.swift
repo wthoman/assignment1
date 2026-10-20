@@ -774,7 +774,7 @@ struct GroupMenuSheet: View {
                     SetRow(first: g.type != "friends", icon: .link, title: "Copy group link") { EmptyView() }
                 }
                 .buttonStyle(.press)
-                Button { m.leaveGroup(g.id) } label: {
+                Button { m.pendingLeave = g.id } label: {
                     SetRow(first: false, icon: .leave, title: g.type == "community" ? "Leave community" : "Leave group", titleColor: c.acc) { EmptyView() }
                 }
                 .buttonStyle(.press)

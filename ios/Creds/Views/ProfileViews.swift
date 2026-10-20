@@ -104,7 +104,10 @@ struct ProfileView: View {
             .card().blk()
             VStack(alignment: .leading, spacing: 0) {
                 Eyebrow("Past recaps")
-                ForEach(Array([("Oct", 4, "Week 40 · Steady Week"), ("Sep", 27, "Week 39 · Comeback Kid"), ("Sep", 20, "Week 38 · Early Bird")].enumerated()), id: \.offset) { i, w in
+                ForEach(Array([(1, "Steady Week"), (2, "Comeback Kid"), (3, "Early Bird")].map { k, award in
+                    let end = Day.weekEnd(k)
+                    return (Day.fmt(end, "MMM"), Day.cal.component(.day, from: end), "Week \(Day.weekNum(end)) · \(award)")
+                }.enumerated()), id: \.offset) { i, w in
                     Button { m.playRecap() } label: {
                         Divided(first: i == 0) {
                             HStack(spacing: 12) {

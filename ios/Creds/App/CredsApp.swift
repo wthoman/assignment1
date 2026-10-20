@@ -38,6 +38,22 @@ struct RootView: View {
         } message: { h in
             Text("\(h.name) will be marked as not done for today.")
         }
+        .alert("Remove this photo?", isPresented: Binding(get: { m.pendingRemovePhoto != nil }, set: { if !$0 { m.pendingRemovePhoto = nil } }),
+               presenting: m.pendingRemovePhoto.flatMap { m.H($0) }) { _ in
+            Button("Remove photo", role: .destructive) { withAnimation { m.confirmRemovePhoto() } }
+            Button("Keep it", role: .cancel) { m.pendingRemovePhoto = nil }
+        } message: { h in
+            Text("A check-in needs its photo, so \(h.name) will be marked as not done for today.")
+        }
+        .alert("Leave this group?", isPresented: Binding(get: { m.pendingLeave != nil }, set: { if !$0 { m.pendingLeave = nil } }),
+               presenting: m.pendingLeave.flatMap { m.G($0) }) { g in
+            Button(g.type == "community" ? "Leave community" : "Leave group", role: .destructive) { withAnimation { m.confirmLeave() } }
+            Button("Stay", role: .cancel) { m.pendingLeave = nil }
+        } message: { g in
+            Text(g.type == "community"
+                 ? "You’ll leave \(g.name) and its task comes off your Today page."
+                 : "You’ll leave \(g.name). Its tasks stay on your Today page as your own.")
+        }
     }
     private var isRecap: Bool {
         switch m.overlay { case .recap, .story: return true; default: return false }

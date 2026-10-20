@@ -591,7 +591,7 @@ struct PostSheet: View {
                     HStack(spacing: 8) {
                         if p == "me" {
                             if pic {
-                                Button("Remove photo") { m.removePhoto(h.id) }.buttonStyle(.btn(.line, small: true))
+                                Button("Remove photo") { m.pendingRemovePhoto = h.id }.buttonStyle(.btn(.line, small: true))
                             } else {
                                 Button { m.check(h.id) } label: { Ico(.camera, 14); Text("Take photo") }.buttonStyle(.btn(.primary, small: true))
                             }
