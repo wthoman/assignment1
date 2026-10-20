@@ -33,24 +33,24 @@ struct Person {
 
 /// A person's record on a habit: `hist` = the 6 days before today (oldest→newest),
 /// `s` = streak as of yesterday, `done` = today's check-in time.
+/// `proof` = a real photo was captured and saved; `sample` = a demo photo variant (seed data only, never proof).
 struct Member {
     var s: Int
     var hist: [Int]
     var done: String?
     var proof = false
     var caption: String? = nil
-    var nophoto = false
+    var sample: Int? = nil
 }
 
-func mem(_ s: Int, _ hist: [Int], _ done: String? = nil, proof: Bool = false, caption: String? = nil, nophoto: Bool = false) -> Member {
-    Member(s: s, hist: hist, done: done, proof: proof, caption: caption, nophoto: nophoto)
+func mem(_ s: Int, _ hist: [Int], _ done: String? = nil, caption: String? = nil, sample: Int? = nil) -> Member {
+    Member(s: s, hist: hist, done: done, caption: caption, sample: sample)
 }
 
 struct Habit: Identifiable {
     let id: String
     var name, ic, time, tod, freq: String
     var group: String?
-    var proof: Bool
     var optional = false
     var mem: Ordered<Member>
 }

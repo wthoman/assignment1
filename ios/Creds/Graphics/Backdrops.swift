@@ -94,6 +94,61 @@ struct PhotoFill: View {
     }
 }
 
+/// A demo check-in photo for seed data: a soft-lit scene in the habit's colours with its icon as the subject.
+/// `variant` moves the light and shifts the colours so friends' photos don't all look alike.
+struct SamplePhoto: View {
+    let ic: String
+    var variant = 0
+    private static let looks: [String: (top: UInt32, bottom: UInt32, glow: UInt32)] = [
+        "water": (0xA9DCEB, 0x2D6A8A, 0xE9FBFF), "run": (0xF7C887, 0xB9473A, 0xFFF1C9), "read": (0xEFDDC2, 0x8A5A3C, 0xFFF6E2),
+        "study": (0x4A4E6E, 0x1B1D30, 0xF3C67A), "calm": (0xCFC0EA, 0x5B4888, 0xF8F0FF), "phone": (0x3A3A48, 0x15151C, 0x9FB4FF),
+        "sleep": (0x46507E, 0x171A33, 0xD9DEFF), "eat": (0xC9E2A4, 0x4F7A3A, 0xF6FFE6), "pray": (0xF3D9B0, 0x9A6B48, 0xFFF4DE),
+        "create": (0xF4C6B8, 0xA2486A, 0xFFEFE8), "strength": (0xC9CED6, 0x464D5A, 0xFFFFFF), "sunrise": (0xFFD39A, 0xD0614A, 0xFFF6D6),
+        "talk": (0xBFE0D8, 0x3E7A70, 0xF0FFFB), "music": (0xE7B7D6, 0x6E3466, 0xFFE9F6), "clean": (0xD8EEF0, 0x5C8C93, 0xFFFFFF),
+        "pill": (0xF0D2D2, 0x9C4D57, 0xFFF3F3)
+    ]
+    var body: some View {
+        let look = Self.looks[ic] ?? Self.looks["clean"]!
+        let v = abs(variant) % 3
+        let light = [UnitPoint(x: 0.28, y: 0.22), UnitPoint(x: 0.74, y: 0.18), UnitPoint(x: 0.5, y: 0.34)][v]
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            ZStack {
+                LinearGradient(colors: [Color(hex: look.top), Color(hex: look.bottom)], startPoint: .top, endPoint: .bottom)
+                    .hueRotation(.degrees(Double(v) * 9 - 9))
+                RadialGradient(colors: [Color(hex: look.glow).opacity(0.85), .clear], center: light, startRadius: 0, endRadius: max(w, h) * 0.62)
+                // out-of-focus lights
+                ForEach(0..<6, id: \.self) { k in
+                    let x = CGFloat((k * 37 + v * 23) % 100) / 100, y = CGFloat((k * 53 + v * 31) % 60) / 100
+                    Circle().fill(Color(hex: look.glow).opacity(0.18 + Double(k % 3) * 0.06))
+                        .frame(width: w * (0.14 + CGFloat(k % 3) * 0.07))
+                        .blur(radius: w * 0.025)
+                        .position(x: x * w, y: y * h)
+                }
+                // the surface it's sitting on
+                Ellipse().fill(Color(hex: look.bottom).opacity(0.55))
+                    .frame(width: w * 1.5, height: h * 0.42)
+                    .position(x: w / 2, y: h * 1.02)
+                    .blur(radius: w * 0.02)
+                Ellipse().fill(.black.opacity(0.22))
+                    .frame(width: w * 0.5, height: h * 0.06)
+                    .position(x: w / 2, y: h * 0.72)
+                    .blur(radius: w * 0.03)
+                HIcon(ic, min(w, h) * 0.5, 1.6)
+                    .foregroundStyle(.white.opacity(0.94))
+                    .shadow(color: .black.opacity(0.28), radius: w * 0.03, y: w * 0.02)
+                    .rotationEffect(.degrees(Double(v) * 6 - 6))
+                    .position(x: w / 2, y: h * 0.5)
+                // vignette
+                RadialGradient(colors: [.clear, .black.opacity(0.28)], center: .center, startRadius: min(w, h) * 0.35, endRadius: max(w, h) * 0.8)
+            }
+            .frame(width: w, height: h)
+        }
+        .clipped()
+        .accessibilityLabel("Sample photo")
+    }
+}
+
 /// Community poster looks.
 enum PosterLook: String { case wine, curtain, ink, paper }
 

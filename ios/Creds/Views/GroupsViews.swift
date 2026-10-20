@@ -501,8 +501,10 @@ struct GroupPageView: View {
                     }
                     .card().blk()
                     VStack(alignment: .leading, spacing: 0) {
-                        BlkHead(left: "Today’s photos · \(h.name)") { Eyebrow("\(m.doneCount(h)) of \(m.peopleOf(h).count)") }
-                        TodayStrip(h: h)
+                        BlkHead(left: "Today’s photos · \(h.name)") {
+                            if !m.isLarge(h) { Eyebrow("\(m.doneCount(h)) of \(m.peopleOf(h).count)") }
+                        }
+                        TodayStrip(h: h, fill: c.bg2)
                     }
                     .blk()
                 }
@@ -527,15 +529,10 @@ struct GroupPageView: View {
                     .card().blk()
                 }
                 if isMember {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Eyebrow("Notifications from this group")
-                        Seg(options: ["Everything", "Milestones", "Off"].map { ($0, $0) }, selected: info.notif) { m.setGroupNotif(id, $0) }.padding(.top, 10)
-                        if let h {
-                            Text("Counts toward challenges: \(Text(h.name).fontWeight(.bold).foregroundStyle(c.ink))")
-                                .font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 10)
-                        }
+                    if let h {
+                        Text("Counts toward challenges: \(Text(h.name).fontWeight(.bold).foregroundStyle(c.ink))")
+                            .font(.sans(12.5)).foregroundStyle(c.ink3).padding(.top, 18)
                     }
-                    .card().blk()
                     Button(info.type == "community" ? "Leave community" : "Leave group") { m.leaveGroup(id) }
                         .buttonStyle(Btn(kind: .ghost, fg: c.acc)).padding(.top, 8)
                 }
@@ -683,6 +680,9 @@ struct GroupMenuSheet: View {
         if let s = m.sheet, let g = m.G(s.id) {
             SheetBody(top: 10) {
                 Text(g.name).font(.serif(26)).foregroundStyle(c.ink).padding(.bottom, 8)
+                Eyebrow("Notifications from this group")
+                Seg(options: ["Everything", "Milestones", "Off"].map { ($0, $0) }, selected: g.notif) { m.setGroupNotif(g.id, $0) }
+                    .padding(.top, 10).padding(.bottom, 14)
                 if g.type == "friends" {
                     Button { m.inviteFriends(g.id) } label: {
                         SetRow(first: true, icon: .invite, title: "Invite friends") { Ico(.right).foregroundStyle(c.ink) }

@@ -331,96 +331,91 @@ struct DoneTodayLabel: View {
 }
 
 /// Today's photos, three to a row: you first, then friends (done first, by time).
+/// Big groups show only the photos that were taken: no empty frames.
 struct TodayStrip: View {
     @Environment(AppModel.self) private var m
+    @Environment(\.pal) private var c
     let h: Habit
+    /// Fill behind empty frames; defaults to the Today card colour.
+    var fill: Color? = nil
     var body: some View {
         let others = stableSorted(m.peopleOf(h).filter { $0 != "me" }) { a, b in
             let da = m.isDone(h, a) ? 1 : 0, db = m.isDone(h, b) ? 1 : 0
             if db - da != 0 { return db - da }
             return da == 1 ? Day.tmin(h.mem[a]?.done ?? "") - Day.tmin(h.mem[b]?.done ?? "") : 0
         }
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3), spacing: 14) {
-            ForEach(["me"] + others, id: \.self) { p in PersonTile(h: h, p: p) }
+        let all = ["me"] + others
+        let shown = m.isLarge(h) ? all.filter { m.hasPhoto(h, $0) } : all
+        if shown.isEmpty {
+            Text("No photos yet today.").font(.sans(15)).foregroundStyle(c.today.muted)
+        } else {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16, alignment: .top), count: 3), spacing: 20) {
+                ForEach(shown, id: \.self) { p in PersonTile(h: h, p: p, fill: fill ?? c.today.card) }
+            }
         }
     }
 }
 
+/// A check-in photo: your saved photo, a demo sample from seed data, or the drawn stand-in.
+struct CheckinPhoto: View {
+    @Environment(AppModel.self) private var m
+    let h: Habit
+    let p: String
+    var body: some View {
+        if p == "me", h.mem["me"]?.proof == true, let item = m.storyItem(for: h.id), let img = m.storyImage(item) {
+            Image(uiImage: img).resizable().scaledToFill()
+                .accessibilityLabel("Your photo")
+        } else {
+            SamplePhoto(ic: h.ic, variant: h.mem[p]?.sample ?? hashN(p))
+        }
+    }
+}
+
+/// One photo frame with the person's full name and when the photo was taken.
 struct PersonTile: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
     let h: Habit
     let p: String
+    let fill: Color
     var body: some View {
-        let me = p == "me", d = m.isDone(h, p)
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let t = c.today, me = p == "me", pic = m.hasPhoto(h, p)
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         Button {
-            if d { m.viewPost(h.id, p) } else if me { m.addPhoto(h.id) }
+            if pic { m.viewPost(h.id, p) } else if me { m.check(h.id) }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack {
-                    if d && m.hasPhoto(h, p) {
-                        if me, let item = m.storyItem(for: h.id), let img = m.storyImage(item) {
-                            Image(uiImage: img).resizable().scaledToFill()
-                        } else {
-                            PhotoFill(floorCell: 16, floorHeight: 40, floorOpacity: 0.28, center: UnitPoint(x: 0.5, y: 0.3))
-                            HIcon(h.ic, 26, 1.3).foregroundStyle(Color(red: 1, green: 236 / 255, blue: 226 / 255).opacity(0.88))
-                        }
-                        Av(p: p, size: 20).background(Circle().stroke(Brand.wineInk, lineWidth: 3))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading).padding(5)
-                    } else if d {
-                        c.card
-                        VStack(spacing: 7) {
-                            Ico(.check, 14).foregroundStyle(Brand.onWine).frame(width: 30, height: 30).background(Circle().fill(c.acc))
-                            TileLabel("Done\nno photo")
-                        }
-                        .foregroundStyle(c.ink2)
-                        if me {
-                            Text("+ Photo").font(.sans(9, .bold)).foregroundStyle(c.bg)
-                                .padding(.horizontal, 6).padding(.vertical, 2).background(Capsule().fill(c.ink))
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(5)
-                        }
+                    fill
+                    if pic {
+                        CheckinPhoto(h: h, p: p)
                     } else if me {
-                        VStack(spacing: 7) { Ico(.camera, 20); TileLabel("Check in") }.foregroundStyle(c.acc)
-                    } else {
-                        c.bg2
-                        VStack(spacing: 7) {
-                            Av(p: p, size: 34).grayscale(1).opacity(0.45)
-                            TileLabel("Not done\nyet")
+                        VStack(spacing: 8) {
+                            Ico(.camera, 24)
+                            Text("Take photo").font(.sans(13, .semibold))
                         }
-                        .foregroundStyle(c.ink3)
+                        .foregroundStyle(t.red)
                     }
                 }
                 // fixed portrait shape at whatever width the column gives
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .aspectRatio(78.0 / 98.0, contentMode: .fit)
+                .aspectRatio(146.0 / 168.0, contentMode: .fit)
                 .clipShape(shape)
-                .overlay {
-                    if d && !m.hasPhoto(h, p) { shape.strokeBorder(c.line, lineWidth: 1) }
-                    else if !d { shape.strokeBorder(me ? c.acc : c.line2, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
-                }
-                Text(m.person(p).full).font(.sans(12.5, .semibold)).foregroundStyle(!d && !me ? c.ink3 : c.ink)
-                    .lineLimit(1).truncationMode(.tail).padding(.top, 6)
-                Text(d ? photoTime : "Not yet").font(.sans(11)).foregroundStyle(c.ink3).lineLimit(1).padding(.top, 1)
+                .overlay { if me && !pic { shape.strokeBorder(t.red.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) } }
+                Text(m.person(p).full).font(.sans(16, .medium)).foregroundStyle(t.text)
+                    .lineLimit(1).truncationMode(.tail).padding(.top, 10)
+                Text(pic ? photoTime : "Not yet").font(.sans(14)).foregroundStyle(t.muted).lineLimit(1).padding(.top, 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
         }
         .buttonStyle(.press)
-        .disabled(!d && !me)
+        .disabled(!pic && !me)
     }
 
     /// When the photo was taken: your saved photo's time, otherwise the check-in time.
     private var photoTime: String {
-        if p == "me", m.hasPhoto(h, p), let item = m.storyItem(for: h.id) { return item.time }
+        if p == "me", h.mem["me"]?.proof == true, let item = m.storyItem(for: h.id) { return item.time }
         return h.mem[p]?.done ?? ""
-    }
-}
-
-private struct TileLabel: View {
-    let text: String
-    init(_ text: String) { self.text = text }
-    var body: some View {
-        Text(text).font(.mono(8.5)).tracking(1).textCase(.uppercase).multilineTextAlignment(.center).lineSpacing(1)
     }
 }

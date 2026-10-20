@@ -1,12 +1,13 @@
 import Foundation
 
-/// Demo data — today is Wed Oct 7 2026, 6:12 PM.
+/// Demo data, laid out around the real current date.
 enum Seed {
-    static let today: Date = {
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = .current
-        return cal.date(from: DateComponents(year: 2026, month: 10, day: 7))!
-    }()
-    static let now = "6:12 PM"
+    static var today: Date { Calendar.current.startOfDay(for: Date()) }
+    /// The current time, "6:12 PM".
+    static var now: String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US"); f.dateFormat = "h:mm a"
+        return f.string(from: Date())
+    }
 
     static func people() -> [String: Person] { [
         "me": Person(name: "Shannon", full: "Shannon Sutiono", handle: "shannon", av: "a1", bio: "Trying to drink more water than coffee."),
@@ -24,22 +25,22 @@ enum Seed {
     static let friends = ["mina", "preston", "caitlyn", "ava", "jordan", "leo", "theo", "noah"]
 
     static func habits() -> [Habit] { [
-        Habit(id: "water", name: "Drink 5L of water", ic: "water", time: "Anytime", tod: "anytime", freq: "Every day", group: "hydration", proof: true,
-              mem: Ordered([("me", mem(6, [1, 1, 1, 1, 1, 1])), ("mina", mem(13, [1, 1, 1, 1, 1, 1], "8:12 AM")), ("preston", mem(2, [1, 1, 1, 0, 1, 1])),
-                            ("ava", mem(8, [1, 1, 1, 1, 1, 1], "10:40 AM")), ("jordan", mem(1, [0, 1, 1, 0, 0, 1]))])),
-        Habit(id: "run", name: "Morning run", ic: "run", time: "6:30 AM", tod: "morning", freq: "Weekdays", group: "run", proof: true,
-              mem: Ordered([("me", mem(3, [1, 1, 0, 1, 1, 1], "6:31 AM", proof: true, caption: "Slow, but done.")), ("preston", mem(11, [1, 1, 1, 1, 1, 1], "6:04 AM")),
-                            ("leo", mem(5, [0, 1, 1, 1, 1, 1], "6:20 AM", nophoto: true)), ("theo", mem(1, [1, 0, 1, 0, 0, 1]))])),
-        Habit(id: "study", name: "Study 2 hours", ic: "study", time: "8:00 PM", tod: "evening", freq: "Every day", group: "idsn", proof: true,
-              mem: Ordered([("me", mem(4, [1, 0, 1, 1, 1, 1])), ("mina", mem(9, [1, 1, 1, 1, 1, 1], "1:15 PM", nophoto: true)),
-                            ("preston", mem(0, [1, 1, 1, 1, 1, 0])), ("caitlyn", mem(7, [1, 1, 1, 1, 1, 1], "4:20 PM"))])),
-        Habit(id: "read", name: "Read 20 pages", ic: "read", time: "9:30 PM", tod: "evening", freq: "Every day", group: "pageturners", proof: true,
-              mem: Ordered([("me", mem(2, [1, 1, 0, 0, 1, 1])), ("caitlyn", mem(15, [1, 1, 1, 1, 1, 1], "7:02 AM")), ("noah", mem(0, [1, 0, 1, 0, 0, 0]))])),
-        Habit(id: "calm", name: "Meditate 10 min", ic: "calm", time: "7:00 AM", tod: "morning", freq: "Every day", group: "calm", proof: false,
-              mem: Ordered([("me", mem(5, [0, 1, 1, 1, 1, 1])), ("ava", mem(12, [1, 1, 1, 1, 1, 1], "7:30 AM")), ("theo", mem(0, [0, 0, 1, 0, 1, 0]))])),
-        Habit(id: "phone", name: "No phone after 11pm", ic: "phone", time: "10:45 PM", tod: "evening", freq: "Every day", group: nil, proof: false,
+        Habit(id: "water", name: "Drink 5L of water", ic: "water", time: "Anytime", tod: "anytime", freq: "Every day", group: "hydration",
+              mem: Ordered([("me", mem(6, [1, 1, 1, 1, 1, 1])), ("mina", mem(13, [1, 1, 1, 1, 1, 1], "8:12 AM", sample: 0)), ("preston", mem(2, [1, 1, 1, 0, 1, 1])),
+                            ("ava", mem(8, [1, 1, 1, 1, 1, 1], "10:40 AM", sample: 1)), ("jordan", mem(1, [0, 1, 1, 0, 0, 1]))])),
+        Habit(id: "run", name: "Morning run", ic: "run", time: "6:30 AM", tod: "morning", freq: "Weekdays", group: "run",
+              mem: Ordered([("me", mem(3, [1, 1, 0, 1, 1, 1], "6:31 AM", caption: "Slow, but done.", sample: 0)), ("preston", mem(11, [1, 1, 1, 1, 1, 1], "6:04 AM", sample: 1)),
+                            ("leo", mem(5, [0, 1, 1, 1, 1, 1], "6:20 AM", sample: 2)), ("theo", mem(1, [1, 0, 1, 0, 0, 1]))])),
+        Habit(id: "study", name: "Study 2 hours", ic: "study", time: "8:00 PM", tod: "evening", freq: "Every day", group: "idsn",
+              mem: Ordered([("me", mem(4, [1, 0, 1, 1, 1, 1])), ("mina", mem(9, [1, 1, 1, 1, 1, 1], "1:15 PM", sample: 0)),
+                            ("preston", mem(0, [1, 1, 1, 1, 1, 0])), ("caitlyn", mem(7, [1, 1, 1, 1, 1, 1], "4:20 PM", sample: 1))])),
+        Habit(id: "read", name: "Read 20 pages", ic: "read", time: "9:30 PM", tod: "evening", freq: "Every day", group: "pageturners",
+              mem: Ordered([("me", mem(2, [1, 1, 0, 0, 1, 1])), ("caitlyn", mem(15, [1, 1, 1, 1, 1, 1], "7:02 AM", sample: 0)), ("noah", mem(0, [1, 0, 1, 0, 0, 0]))])),
+        Habit(id: "calm", name: "Meditate 10 min", ic: "calm", time: "7:00 AM", tod: "morning", freq: "Every day", group: "calm",
+              mem: Ordered([("me", mem(5, [0, 1, 1, 1, 1, 1])), ("ava", mem(12, [1, 1, 1, 1, 1, 1], "7:30 AM", sample: 2)), ("theo", mem(0, [0, 0, 1, 0, 1, 0]))])),
+        Habit(id: "phone", name: "No phone after 11pm", ic: "phone", time: "10:45 PM", tod: "evening", freq: "Every day", group: nil,
               mem: Ordered([("me", mem(4, [1, 0, 1, 1, 1, 1]))])),
-        Habit(id: "journal", name: "Journal three lines", ic: "create", time: "Anytime", tod: "anytime", freq: "Every day", group: nil, proof: false, optional: true,
+        Habit(id: "journal", name: "Journal three lines", ic: "create", time: "Anytime", tod: "anytime", freq: "Every day", group: nil, optional: true,
               mem: Ordered([("me", mem(2, [0, 1, 0, 1, 1, 1]))]))
     ] }
 

@@ -286,7 +286,8 @@ struct SheetPanel: View {
             .frame(maxWidth: .infinity)
             .frame(height: tall ? maxH : nil)
         }
-        .background(ZStack { c.bg; Grain() }.clipShape(shape).ignoresSafeArea(edges: .bottom))
+        // Inspect Task shares the Today page's warm paper
+        .background(ZStack { type == .details ? c.today.bg : c.bg; Grain() }.clipShape(shape).ignoresSafeArea(edges: .bottom))
         .offset(y: drag)
         // drag down to dismiss (scrolling content keeps its own pan; the grabber/header always work)
         .gesture(
@@ -313,7 +314,6 @@ struct SheetContent: View {
         case .group: CreateGroupSheet()
         case .community: CommunitySheet()
         case .trophy: TrophySheet()
-        case .askphoto: AskPhotoSheet()
         case .proof: ProofSheet()
         case .post: PostSheet()
         case .react: ReactSheet()

@@ -11,7 +11,7 @@ struct Route: Hashable {
     let uid = UUID()
 }
 
-enum SheetType { case details, create, group, community, trophy, askphoto, proof, post, react, comments, avatar, editprofile, groupmenu, invitefriends, friendmenu, invitehabit }
+enum SheetType { case details, create, group, community, trophy, proof, post, react, comments, avatar, editprofile, groupmenu, invitefriends, friendmenu, invitehabit }
 
 /// Whatever the open bottom sheet needs (mirrors the mock-up's `S.sheet`).
 struct SheetState {
@@ -109,8 +109,6 @@ final class AppModel {
     var toast: ToastState? = nil
     var overlay: Overlay? = nil
     var voiceI = 0
-    var detY = 2026
-    var detMo = 9   // 0-based month, like JS
     var trPageTarget: String? = nil
 
     private var toastTask: Task<Void, Never>? = nil
@@ -136,10 +134,15 @@ final class AppModel {
     func peopleOf(_ h: Habit) -> [String] { h.mem.keys.filter { $0 == "me" || friends.contains($0) } }
     func doneCount(_ h: Habit) -> Int { peopleOf(h).filter { isDone(h, $0) }.count }
     func shared(_ h: Habit) -> Bool { peopleOf(h).count > 1 }
+    /// Your photo counts only once it's saved; everyone else's check-in carries their photo.
     func hasPhoto(_ h: Habit, _ p: String) -> Bool {
-        if p == "me" { return h.mem["me"].map { $0.done != nil && $0.proof } ?? false }
-        return isDone(h, p) && h.proof && !(h.mem[p]?.nophoto ?? false)
+        if p == "me" { return h.mem["me"].map { $0.done != nil && ($0.proof || $0.sample != nil) } ?? false }
+        return isDone(h, p)
     }
+    /// Members on the habit's group (communities count everyone), or just the people on the habit.
+    func groupSize(_ h: Habit) -> Int { G(h.group).map { $0.size ?? $0.members.count } ?? peopleOf(h).count }
+    /// Big groups only show photos that were taken: no counts, no empty frames.
+    func isLarge(_ h: Habit) -> Bool { groupSize(h) > 15 }
     func captionOf(_ h: Habit, _ p: String) -> String {
         h.mem[p]?.caption ?? Seed.captions[h.id + ":" + p] ?? "Day \(streak(h, p))."
     }
@@ -222,12 +225,11 @@ final class AppModel {
 
     // MARK: - check-ins
 
-    /// Tapping a check: done → ask before undoing; photo task → camera first; otherwise stamp it.
+    /// Tapping a check: done → ask before undoing; otherwise the camera, since every check-in needs a photo.
     func check(_ id: String) {
         guard let h = H(id) else { return }
         if isDone(h, "me") { pendingUncheck = id }
-        else if h.proof { openSheet(SheetState(type: .proof, id: id)) }
-        else { checkOff(id) }
+        else { openSheet(SheetState(type: .proof, id: id)) }
     }
 
     func confirmUncheck() {
@@ -236,21 +238,16 @@ final class AppModel {
         undoCheck(id)
     }
 
-    func checkOff(_ id: String, ask: Bool = true) {
+    /// Stamps today's check-in. Only called once a captured photo has been saved.
+    private func checkOff(_ id: String) {
         guard let i = hIndex(id), !isDone(habits[i], "me") else { return }
         habits[i].mem["me"]?.done = Seed.now
-        habits[i].mem["me"]?.proof = false
+        habits[i].mem["me"]?.sample = nil
         if let gid = habits[i].group, let gi = gIndex(gid), groups[gi].ch != nil {   // the linked habit adds to the group total
             groups[gi].ch!.c["me"] = (groups[gi].ch!.c["me"] ?? 0) + 1
         }
         voiceI += 1
         Feedback.checkOff(self)
-        if ask {
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: 260_000_000)
-                self?.openSheet(SheetState(type: .askphoto, id: id))
-            }
-        }
     }
 
     func undoCheck(_ id: String) {
@@ -258,9 +255,7 @@ final class AppModel {
         let prev = habits[i].mem["me"]
         let name = habits[i].name
         let gid = habits[i].group
-        habits[i].mem["me"]?.done = nil
-        habits[i].mem["me"]?.proof = false
-        if let gid, let gi = gIndex(gid), let c = groups[gi].ch?.c["me"], c > 0 { groups[gi].ch!.c["me"] = c - 1 }
+        reopen(i)
         showToast("Unstamped \(name).", undo: { [weak self] in
             guard let self, let i = self.hIndex(id) else { return }
             self.habits[i].mem["me"] = prev
@@ -268,18 +263,15 @@ final class AppModel {
         }, icon: .refresh)
     }
 
-    func openDetails(_ id: String) {
-        detY = 2026; detMo = 9
-        openSheet(SheetState(type: .details, tall: true, id: id))
+    /// Marks today's check-in as not done and takes it back off the group total.
+    private func reopen(_ i: Int) {
+        habits[i].mem["me"]?.done = nil
+        habits[i].mem["me"]?.proof = false
+        habits[i].mem["me"]?.sample = nil
+        if let gid = habits[i].group, let gi = gIndex(gid), let c = groups[gi].ch?.c["me"], c > 0 { groups[gi].ch!.c["me"] = c - 1 }
     }
 
-    func askPhoto(_ id: String) { sheet = SheetState(type: .proof, presentID: sheet?.presentID ?? UUID(), id: id) }
-    func askSkip(_ id: String) {
-        guard let h = H(id) else { closeSheet(); return }
-        closeSheet()
-        // a photo task that isn't stamped yet simply stays open
-        if isDone(h, "me") { showToast(voice, undo: { [weak self] in self?.pendingUncheck = id }) }
-    }
+    func openDetails(_ id: String) { openSheet(SheetState(type: .details, id: id)) }
     /// Shutter: open the real camera, or explain why it can't open.
     func shoot() {
         sheet?.photoError = nil
@@ -319,42 +311,35 @@ final class AppModel {
             sheet?.photoError = "Your photo wasn’t saved to your story: \(error.localizedDescription). \(isDone(h, "me") ? "Try posting again." : "\(h.name) is still open — try again.")"
             return
         }
-        if !isDone(h, "me") { checkOff(id, ask: false) }
+        if !isDone(h, "me") { checkOff(id) }
         habits[i].mem["me"]?.proof = true
+        habits[i].mem["me"]?.sample = nil
         habits[i].mem["me"]?.caption = cap.isEmpty ? nil : cap
         closeSheet()
         showToast(shared(h) ? "Posted to \(G(h.group)?.name ?? "your friends") and your story" : "Added to your story", icon: .camera)
-    }
-    func addPhoto(_ id: String) {
-        guard H(id) != nil else { return }
-        openSheet(SheetState(type: .proof, id: id))
     }
     /// Latest story photo for a habit (today's post).
     func storyItem(for habitId: String) -> StoryItem? { story.last { $0.habitId == habitId } }
     func storyImage(_ item: StoryItem) -> UIImage? { storyStore.image(item) }
     func openStory() { if !story.isEmpty { overlay = .story(UUID()) } }
     func viewPost(_ id: String, _ p: String) { openSheet(SheetState(type: .post, id: id, p: p)) }
+    /// Without its photo the check-in no longer counts, so the task opens again.
     func removePhoto(_ id: String) {
         guard let i = hIndex(id) else { return }
         if let item = storyItem(for: id) {
             storyStore.remove(item, from: story)
             story.removeAll { $0.id == item.id }
         }
-        habits[i].mem["me"]?.proof = false
+        reopen(i)
         habits[i].mem["me"]?.caption = nil
         closeSheet()
-        showToast("Photo removed")
+        showToast("Photo removed · \(habits[i].name) is open again", icon: .camera)
     }
     func deleteHabit(_ id: String) {
         guard let i = hIndex(id) else { return }
         let h = habits.remove(at: i)
         closeSheet()
         showToast("Deleted \(h.name)", undo: { [weak self] in self?.habits.insert(h, at: min(i, self?.habits.count ?? 0)) }, icon: .x)
-    }
-    func monthNav(_ dir: Int) {
-        let mo = detMo + dir
-        if mo > 9 || mo < 0 { return }
-        detMo = mo
     }
 
     // MARK: - create habit
@@ -372,7 +357,7 @@ final class AppModel {
         var mm = Ordered<Member>([("me", mem(0, [0, 0, 0, 0, 0, 0]))])
         if f.with == "friends" { f.friends.forEach { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } }
         if f.with == "group", let g = G(f.gid) { g.members.forEach { if $0 != "me" { mm[$0] = mem(0, [0, 0, 0, 0, 0, 0]) } } }
-        habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: freq, group: f.with == "group" ? f.gid : nil, proof: false, mem: mm), at: 0)
+        habits.insert(Habit(id: id, name: name, ic: f.ic, time: "Anytime", tod: "anytime", freq: freq, group: f.with == "group" ? f.gid : nil, mem: mm), at: 0)
         closeSheet()
         mode = .app; tab = .today; stack = []; day = 6; anim = id
         showToast("“\(name)” added to your book")
@@ -386,6 +371,18 @@ final class AppModel {
         if d.count == 7 { return "Every day" }
         if d == [0, 1, 2, 3, 4] { return "Weekdays" }
         return d.map { weekdayNames[$0] }.joined(separator: ", ")
+    }
+
+    /// Whether the habit is planned for that date; a custom schedule rests on the days it leaves out.
+    func scheduled(_ h: Habit, _ d: Date) -> Bool {
+        let i = (Day.cal.component(.weekday, from: d) + 5) % 7   // Monday = 0
+        switch h.freq {
+        case "Every day": return true
+        case "Weekdays": return i < 5
+        default:
+            let days = h.freq.split(separator: ",").compactMap { Self.weekdayNames.firstIndex(of: $0.trimmingCharacters(in: .whitespaces)) }
+            return days.isEmpty || days.contains(i)
+        }
     }
 
     func toggleDay(_ i: Int) {
@@ -446,9 +443,9 @@ final class AppModel {
         for (i, p) in f.enumerated() {
             let s = 3 + i * 6
             let hist = [0, 1, 1, 1, 1, 1].enumerated().map { k, v in k > 5 - s ? 1 : v }
-            mm[p] = mem(s, hist, i == 0 ? "8:45 AM" : nil)
+            mm[p] = i == 0 ? mem(s, hist, "8:45 AM", sample: 0) : mem(s, hist)
         }
-        habits.append(Habit(id: c.id, name: c.habit ?? c.name, ic: c.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: c.id, proof: true, mem: mm))
+        habits.append(Habit(id: c.id, name: c.habit ?? c.name, ic: c.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: c.id, mem: mm))
         var cc = Ordered<Int>([("me", 0)])
         for (i, p) in f.enumerated() { cc[p] = 3 + i }
         let goal = Int((Double(c.size) * 2.5).rounded())
@@ -463,9 +460,10 @@ final class AppModel {
         guard let v = invites.first(where: { $0.id == id }) else { return }
         var mm = Ordered<Member>([("me", mem(0, [0, 0, 0, 0, 0, 0]))])
         for (i, p) in v.members.enumerated() {
-            mm[p] = mem(2 + i * 3, [0, 1, 1, 1, 1, 1], i < 2 ? "\(8 + i):\(String(format: "%02d", 10 + i * 25)) AM" : nil)
+            mm[p] = i < 2 ? mem(2 + i * 3, [0, 1, 1, 1, 1, 1], "\(8 + i):\(String(format: "%02d", 10 + i * 25)) AM", sample: i)
+                          : mem(2 + i * 3, [0, 1, 1, 1, 1, 1])
         }
-        habits.append(Habit(id: "h-" + v.id, name: "Get outside", ic: v.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: v.id, proof: true, mem: mm))
+        habits.append(Habit(id: "h-" + v.id, name: "Get outside", ic: v.ic, time: "Anytime", tod: "anytime", freq: "Every day", group: v.id, mem: mm))
         var ch = v.ch
         ch.c["me"] = 0
         groups.append(HabitGroup(id: v.id, name: v.name, ic: v.ic, type: "friends", habit: "h-" + v.id, notif: "Everything", desc: v.desc, members: ["me"] + v.members, ch: ch, fin: []))
