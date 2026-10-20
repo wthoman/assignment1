@@ -20,7 +20,7 @@ struct FriendsView: View {
             }
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("My friends \(Text("(\(m.friends.count))").foregroundStyle(c.ink3))").font(.serif(26)).foregroundStyle(c.ink)
+                    Text("My friends \(Text("(\(m.friends.count))").foregroundStyle(c.ink3))").font(.sans(24, .semibold)).foregroundStyle(c.ink)
                     Spacer()
                     Button { m.push(.addfriends) } label: { Ico(.plus, 22).foregroundStyle(c.ink2).frame(width: 36, height: 36) }
                         .buttonStyle(.press).accessibilityLabel("Add friends")

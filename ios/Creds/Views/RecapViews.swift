@@ -18,7 +18,7 @@ struct RecapHubView: View {
                 HStack(spacing: 12) {
                     Text("\(r.pct)%").font(.sans(32, .bold)).tracking(-0.64).foregroundStyle(c.ink)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("of your check-ins done").font(.sans(13)).foregroundStyle(c.ink2)
+                        Text("of scheduled check-ins done · rest days don’t count").font(.sans(13)).foregroundStyle(c.ink2)
                         Text("\(r.delta >= 0 ? "▲" : "▼") \(abs(r.delta)) pts vs the week before")
                             .font(.mono(10)).tracking(0.4).foregroundStyle(c.yelInk)
                             .padding(.horizontal, 7).padding(.vertical, 2).background(Capsule().fill(c.yelSoft))
@@ -29,7 +29,7 @@ struct RecapHubView: View {
                     Spacer()
                     HStack(spacing: 3) {
                         ForEach(0..<7, id: \.self) { i in
-                            Text(Day.narrow(Day.date(i))).font(.mono(8.5, i == 6 ? .medium : .regular)).foregroundStyle(i == 6 ? c.acc : c.ink3).frame(width: 10)
+                            Text(Day.narrow(Day.date(i))).font(.sans(10, i == 6 ? .bold : .medium)).foregroundStyle(i == 6 ? c.today.ink : c.ink3).frame(width: 17)
                         }
                     }
                     Color.clear.frame(width: 30, height: 1)
@@ -39,18 +39,24 @@ struct RecapHubView: View {
                     Button { m.openDetails(x.h.id) } label: {
                         HStack(spacing: 10) {
                             Text(x.h.name).font(.sans(14, .medium)).foregroundStyle(c.ink).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                            Dots7(states: Dots7.from(x.w))
-                            Text("\(x.n)/7").font(.mono(11)).foregroundStyle(c.ink2).frame(width: 30, alignment: .trailing)
+                            HStack(spacing: 3) {
+                                ForEach(Array(x.marks.enumerated()), id: \.offset) { _, k in DayDot(mark: k, size: 17) }
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(x.marks.enumerated().map { i, k in "\(Day.weekday(Day.date(i))) \(k.label)" }.joined(separator: ", "))
+                            Text("\(x.n)/\(x.due)").font(.sans(12, .medium)).foregroundStyle(c.ink2).frame(width: 30, alignment: .trailing)
+                                .accessibilityLabel("\(x.n) of \(x.due) scheduled days")
                         }
                         .padding(.vertical, 8)
                         .overlay(alignment: .top) { Rectangle().fill(c.line).frame(height: 1) }
                     }
                     .buttonStyle(.press)
                 }
+                DayLegend().padding(.top, 10)
                 if let best = r.best, let weak = r.weak {
                     HStack(spacing: 8) {
-                        Insight(eyebrow: "Most consistent", eyebrowColor: c.yelInk, title: best.h.name, sub: "\(best.n) of 7 days", fill: c.yelSoft)
-                        Insight(eyebrow: "Needs a push", eyebrowColor: c.acc, title: weak.h.name, sub: "\(weak.n) of 7 days · try an earlier time?", fill: c.bg2)
+                        Insight(eyebrow: "Most consistent", eyebrowColor: c.yelInk, title: best.h.name, sub: "\(best.n) of \(best.due) days", fill: c.yelSoft)
+                        Insight(eyebrow: "Needs a push", eyebrowColor: c.acc, title: weak.h.name, sub: "\(weak.n) of \(weak.due) days · try an earlier time?", fill: c.bg2)
                     }
                     .padding(.top, 12)
                 }

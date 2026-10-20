@@ -58,6 +58,19 @@ struct ToastState: Identifiable {
     let undo: (() -> Void)?
 }
 
+enum DayMark {
+    case done, missed, rest, pending, upcoming
+    var label: String {
+        switch self {
+        case .done: return "done"
+        case .missed: return "missed"
+        case .rest: return "rest day"
+        case .pending: return "today, not done yet"
+        case .upcoming: return "upcoming"
+        }
+    }
+}
+
 enum Overlay: Equatable { case recap(UUID), celebrate(String), story(UUID) }
 
 @MainActor @Observable
@@ -70,7 +83,7 @@ final class AppModel {
     var obEmail = ""
     var obPassword = ""
     var obAttempted = false
-    var obGoals: Set<String> = ["water", "move", "read"]
+    var obGoals: Set<String> = []
     var obAdded: Set<String> = ["mina", "preston", "caitlyn"]
     var tab: Tab = .today
     var stack: [Route] = []
@@ -402,6 +415,15 @@ final class AppModel {
         }
     }
 
+    /// How one day of a habit reads: done, missed (scheduled, not done), rest (not on the schedule), today still open, or ahead.
+    func dayMark(_ h: Habit, _ d: Date) -> DayMark {
+        let diff = Day.cal.dateComponents([.day], from: d, to: Seed.today).day ?? 0
+        if diff >= 0 && diff <= 6 && week(h, "me")[6 - diff] != 0 { return .done }
+        if !scheduled(h, d) { return .rest }
+        if diff < 0 { return .upcoming }
+        return diff == 0 ? .pending : .missed
+    }
+
     func toggleDay(_ i: Int) {
         guard sheet != nil else { return }
         if let k = sheet?.days.firstIndex(of: i) { sheet?.days.remove(at: k) } else { sheet?.days.append(i) }
@@ -712,7 +734,8 @@ final class AppModel {
 
     // MARK: - recap stats
 
-    struct WeekRow { let h: Habit; let n: Int; let w: [Int] }
+    /// `n` done out of `due` scheduled days (rest days aren't due unless done anyway).
+    struct WeekRow { let h: Habit; let n: Int; let due: Int; let marks: [DayMark] }
     struct RecapPicks {
         var perfect: (p: String, h: Habit, s: Int)?
         var second: FeedEvent?
@@ -739,10 +762,15 @@ final class AppModel {
             return streak(h, "me") > streak(b, "me") ? h : b
         }
         let myCount = habits.reduce(0) { $0 + weekCount($1, "me") }
-        let rows = stableSorted(required.map { WeekRow(h: $0, n: weekCount($0, "me"), w: week($0, "me")) }) { a, b in
-            a.n != b.n ? b.n - a.n : streak(b.h, "me") - streak(a.h, "me")
+        let rows = stableSorted(required.map { h in
+            let marks = (0..<7).map { dayMark(h, Day.date($0)) }
+            return WeekRow(h: h, n: marks.filter { $0 == .done }.count, due: marks.filter { $0 != .rest }.count, marks: marks)
+        }) { a, b in
+            // best share of due days first
+            let ra = a.due > 0 ? a.n * 1000 / a.due : 0, rb = b.due > 0 ? b.n * 1000 / b.due : 0
+            return ra != rb ? rb - ra : streak(b.h, "me") - streak(a.h, "me")
         }
-        let done = rows.reduce(0) { $0 + $1.n }, total = rows.count * 7
+        let done = rows.reduce(0) { $0 + $1.n }, total = rows.reduce(0) { $0 + $1.due }
         let pct = total > 0 ? Int((Double(done) / Double(total) * 100).rounded()) : 0
         return RecapPicks(perfect: perfect, second: started ?? comeback, myBest: myBest, myCount: myCount, rows: rows, pct: pct,
                           delta: pct - Seed.prevWeekPct, best: rows.first, weak: rows.last)

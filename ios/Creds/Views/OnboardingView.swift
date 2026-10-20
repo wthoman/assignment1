@@ -83,6 +83,8 @@ private struct ObTop: View {
 }
 
 private struct ObScaffold<Content: View, Foot: View>: View {
+    /// Steps without text fields keep the footer at the bottom instead of riding up with a keyboard.
+    var hasFields = false
     @ViewBuilder var content: Content
     @ViewBuilder var foot: Foot
     var body: some View {
@@ -97,6 +99,7 @@ private struct ObScaffold<Content: View, Foot: View>: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 6) { foot }.padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 30)
         }
+        .ignoresSafeArea(hasFields ? [] : .keyboard, edges: .bottom)
     }
 }
 
@@ -117,7 +120,7 @@ private struct AccountStep: View {
     @Environment(\.pal) private var c
     var body: some View {
         @Bindable var m = m
-        ObScaffold {
+        ObScaffold(hasFields: true) {
             ObHeading(eyebrow: "Create account", lead: "Take your ", em: "seat.", sub: "So your friends can find you.")
             ProfilePhotoPicker {
                 let none = m.myPhoto == nil
@@ -163,7 +166,12 @@ private struct AccountStep: View {
             if m.obAttempted && (m.obNameError != nil || m.obEmailError != nil || m.obPasswordError != nil) {
                 ValidationNote(text: "Fill in the highlighted details to continue.")
             }
-            Button("Continue") { withAnimation(.easeOut(duration: 0.2)) { m.obAccountContinue() } }.buttonStyle(.btn)
+            Button("Continue") {
+                // close the keyboard first so the next step doesn't open with its footer still raised
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                withAnimation(.easeOut(duration: 0.2)) { m.obAccountContinue() }
+            }
+            .buttonStyle(.btn)
         }
     }
 }

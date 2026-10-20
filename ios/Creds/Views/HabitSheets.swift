@@ -80,17 +80,6 @@ struct StreakWeek: View {
     let h: Habit
     @State private var open = true
 
-    private enum Mark { case done, missed, rest, pending, upcoming }
-
-    private func mark(_ d: Date) -> Mark {
-        let diff = Day.cal.dateComponents([.day], from: d, to: Seed.today).day ?? 0
-        let did = diff >= 0 && diff <= 6 && m.week(h, "me")[6 - diff] != 0
-        if did { return .done }
-        if !m.scheduled(h, d) { return .rest }
-        if diff < 0 { return .upcoming }
-        return diff == 0 ? .pending : .missed
-    }
-
     var body: some View {
         let t = c.today, n = m.streak(h, "me")
         let start = Day.cal.dateInterval(of: .weekOfYear, for: Seed.today)?.start ?? Seed.today
@@ -115,32 +104,36 @@ struct StreakWeek: View {
             if open {
                 HStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in
-                        let k = mark(d), today = Day.cal.isDate(d, inSameDayAs: Seed.today)
+                        let k = m.dayMark(h, d), today = Day.cal.isDate(d, inSameDayAs: Seed.today)
                         VStack(spacing: 10) {
                             Text(Day.fmt(d, "EEE")).font(.sans(16, today ? .bold : .regular))
                                 .foregroundStyle(today ? t.ink : t.muted)
-                            dot(k)
+                            DayDot(mark: k)
                         }
                         .frame(maxWidth: .infinity)
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(Day.fmt(d, "EEEEMMMMd")), \(label(k))")
+                        .accessibilityLabel("\(Day.fmt(d, "EEEEMMMMd")), \(k.label)")
                     }
                 }
                 .padding(.top, 16)
-                HStack(spacing: 16) {
-                    legend(.done, "Done"); legend(.missed, "Missed"); legend(.rest, "Rest day")
-                }
-                .padding(.top, 14)
-                .accessibilityHidden(true)
-                .transition(.opacity)
+                DayLegend()
+                    .padding(.top, 14)
+                    .transition(.opacity)
             }
         }
     }
 
-    @ViewBuilder private func dot(_ k: Mark, _ size: CGFloat = 46) -> some View {
+}
+
+/// One day's marker: red check = done, grey cross = missed, dashed ring + moon = rest day, outline = today, empty = ahead.
+struct DayDot: View {
+    @Environment(\.pal) private var c
+    let mark: DayMark
+    var size: CGFloat = 46
+    var body: some View {
         let t = c.today
         ZStack {
-            switch k {
+            switch mark {
             case .done:
                 Circle().fill(t.red)
                 Ico(.check, size * 0.4).foregroundStyle(.white)
@@ -148,30 +141,29 @@ struct StreakWeek: View {
                 Circle().fill(Color(hex: 0xD6C8C3))
                 Ico(.x, size * 0.42).foregroundStyle(Color(hex: 0x6E625F))
             case .rest:
-                Circle().strokeBorder(t.muted.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                Ico(.moon, size * 0.38).foregroundStyle(t.muted)
+                Circle().strokeBorder(t.muted.opacity(0.7), style: StrokeStyle(lineWidth: max(1, size / 30), dash: size < 24 ? [2, 2] : [4, 3]))
+                Ico(.moon, size * 0.42).foregroundStyle(t.muted)
             case .pending:
                 Circle().fill(t.card)
-                Circle().strokeBorder(t.ink.opacity(0.35), lineWidth: 1.5)
+                Circle().strokeBorder(t.ink.opacity(0.35), lineWidth: max(1, size / 30))
             case .upcoming:
                 Circle().fill(t.card)
             }
         }
         .frame(width: size, height: size)
     }
+}
 
-    private func legend(_ k: Mark, _ text: String) -> some View {
-        HStack(spacing: 6) { dot(k, 18); Text(text).font(.sans(13)).foregroundStyle(c.today.muted) }
-    }
-
-    private func label(_ k: Mark) -> String {
-        switch k {
-        case .done: return "done"
-        case .missed: return "missed"
-        case .rest: return "rest day"
-        case .pending: return "today, not done yet"
-        case .upcoming: return "upcoming"
+/// Done · Missed · Rest day key.
+struct DayLegend: View {
+    @Environment(\.pal) private var c
+    var body: some View {
+        HStack(spacing: 16) {
+            ForEach([(DayMark.done, "Done"), (.missed, "Missed"), (.rest, "Rest day")], id: \.1) { k, text in
+                HStack(spacing: 6) { DayDot(mark: k, size: 18); Text(text).font(.sans(13)).foregroundStyle(c.today.muted) }
+            }
         }
+        .accessibilityHidden(true)
     }
 }
 

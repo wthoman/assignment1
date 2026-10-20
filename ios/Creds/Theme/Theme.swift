@@ -17,15 +17,16 @@ struct Palette {
     let tile: Color
     let isStage: Bool
 
+    // matches the Today page: warm pale page, blush cards (card2), white controls (card), brick red
     static let paper = Palette(
-        bg: Color(hex: 0xF0EEEA), bg2: Color(hex: 0xE8E4DD), card: Color(hex: 0xFAF9F6), card2: Color(hex: 0xF4F1EC),
-        line: Color(hex: 0xDDD6CC), line2: Color(hex: 0xC2B8AA),
-        ink: Color(hex: 0x141010), ink2: Color(hex: 0x58504B), ink3: Color(hex: 0x928880),
-        acc: Color(hex: 0x6F1725), acc2: Color(hex: 0x8A2233), accSoft: Color(hex: 0xF0E1E3), accMid: Color(hex: 0xD9B3B9),
+        bg: Color(hex: 0xFCF9F7), bg2: Color(hex: 0xF3EDEA), card: Color(hex: 0xFFFFFF), card2: Color(hex: 0xEEE7E4),
+        line: Color(hex: 0xE4DBD7), line2: Color(hex: 0xCDC1BC),
+        ink: Color(hex: 0x141010), ink2: Color(hex: 0x746764), ink3: Color(hex: 0x99908E),
+        acc: Color(hex: 0x931E14), acc2: Color(hex: 0xA8301F), accSoft: Color(hex: 0xF5E4E0), accMid: Color(hex: 0xE0B6AD),
         goldInk: Color(hex: 0x8C6A22), goldSoft: Color(hex: 0xF2E8CF),
         yel: Color(hex: 0xF2C14E), yelSoft: Color(hex: 0xFBF0CF), yelTrack: Color(hex: 0xF6E3AE), yelInk: Color(hex: 0x7E5A0B),
-        tabBg: Color(hex: 0xFAF9F6, alpha: 0.94), grain: Color(hex: 0x141010, alpha: 0.045), shadow: Color(hex: 0x3A0A12, alpha: 0.28),
-        tile: Color(hex: 0xE6E5E3),
+        tabBg: Color(hex: 0xFCF9F7, alpha: 0.94), grain: Color(hex: 0x141010, alpha: 0.03), shadow: Color(hex: 0x3A0A12, alpha: 0.18),
+        tile: Color(hex: 0xF5F0EE),
         isStage: false)
 
     static let stage = Palette(
@@ -113,18 +114,18 @@ extension Color {
 // MARK: - Type
 
 extension Font {
-    /// New York, semibold, scaled by the mock-up's --ds (.86).
-    static func serif(_ size: CGFloat) -> Font { .system(size: size * 0.86, weight: .semibold, design: .serif) }
+    /// New York, bold like the Today greeting, scaled by the mock-up's --ds (.86).
+    static func serif(_ size: CGFloat) -> Font { .system(size: size * 0.86, weight: .bold, design: .serif) }
     /// Serif without the --ds scale (used where the CSS sets a fixed size).
-    static func serifRaw(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold, design: .serif) }
+    static func serifRaw(_ size: CGFloat) -> Font { .system(size: size, weight: .bold, design: .serif) }
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font { .system(size: size, weight: weight, design: .monospaced) }
     static func sans(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font { .system(size: size, weight: weight) }
 }
 
 extension View {
-    /// Mono uppercase label (.eyebrow).
-    func eyebrowStyle(_ color: Color, size: CGFloat = 10.5, tracking: CGFloat = 0.14) -> some View {
-        self.font(.mono(size)).tracking(size * tracking).textCase(.uppercase).foregroundStyle(color)
+    /// Small uppercase label (.eyebrow), in the Today page's sans.
+    func eyebrowStyle(_ color: Color, size: CGFloat = 10.5, tracking: CGFloat = 0.06) -> some View {
+        self.font(.sans(size + 1.5, .semibold)).tracking((size + 1.5) * tracking).textCase(.uppercase).foregroundStyle(color)
     }
 }
 

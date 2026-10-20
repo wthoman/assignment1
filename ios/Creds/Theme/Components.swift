@@ -2,11 +2,11 @@ import SwiftUI
 
 // MARK: - Surfaces
 
-/// `.card`: cream, soft shadow, faint accent outline, 18pt radius.
+/// `.card`: the Today page's flat blush card, 16pt radius; an outline only when one is asked for.
 struct CardModifier: ViewModifier {
     @Environment(\.pal) private var c
     var padding: EdgeInsets
-    var radius: CGFloat = 18
+    var radius: CGFloat = 16
     var fill: Color? = nil
     var outline: Color? = nil
     var outlineWidth: CGFloat = 1
@@ -16,21 +16,19 @@ struct CardModifier: ViewModifier {
             .padding(padding)
             .background(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(fill ?? c.card)
-                    .shadow(color: flat ? .clear : c.shadow.opacity(0.75), radius: 6, x: 0, y: 5)
+                    .fill(fill ?? c.card2)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(outline ?? (flat ? c.line : c.acc.opacity(0.14)), lineWidth: outlineWidth)
-            )
+            .overlay {
+                if let outline { RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(outline, lineWidth: outlineWidth) }
+            }
     }
 }
 
 extension View {
-    func card(_ pad: CGFloat = 16, radius: CGFloat = 18, fill: Color? = nil, outline: Color? = nil, outlineWidth: CGFloat = 1, flat: Bool = false) -> some View {
+    func card(_ pad: CGFloat = 16, radius: CGFloat = 16, fill: Color? = nil, outline: Color? = nil, outlineWidth: CGFloat = 1, flat: Bool = false) -> some View {
         modifier(CardModifier(padding: EdgeInsets(top: pad, leading: pad, bottom: pad, trailing: pad), radius: radius, fill: fill, outline: outline, outlineWidth: outlineWidth, flat: flat))
     }
-    func card(v: CGFloat, h: CGFloat, radius: CGFloat = 18, fill: Color? = nil, outline: Color? = nil, outlineWidth: CGFloat = 1, flat: Bool = false) -> some View {
+    func card(v: CGFloat, h: CGFloat, radius: CGFloat = 16, fill: Color? = nil, outline: Color? = nil, outlineWidth: CGFloat = 1, flat: Bool = false) -> some View {
         modifier(CardModifier(padding: EdgeInsets(top: v, leading: h, bottom: v, trailing: h), radius: radius, fill: fill, outline: outline, outlineWidth: outlineWidth, flat: flat))
     }
     /// `.blk` spacing between detail blocks.
@@ -288,7 +286,7 @@ struct Field: View {
     private var field: some View {
         VStack(alignment: .leading, spacing: 2) {
             if let label {
-                Text(label).font(.mono(10)).tracking(1.4).textCase(.uppercase).foregroundStyle(c.ink3)
+                Text(label).font(.sans(12, .medium)).foregroundStyle(c.ink3)
             }
             Group {
                 if secure {
@@ -392,9 +390,10 @@ struct Sec: View {
     var count: Int? = nil
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(title).font(.serif(23)).foregroundStyle(c.ink)
+            // same weight and size as "Today’s Tasks"
+            Text(title).font(.sans(24, .semibold)).foregroundStyle(c.ink)
             if let count {
-                Text("\(count)").font(.mono(10.5)).foregroundStyle(c.ink2)
+                Text("\(count)").font(.sans(12, .semibold)).foregroundStyle(c.ink2)
                     .padding(.horizontal, 8).padding(.vertical, 2)
                     .background(Capsule().fill(c.bg2))
             }
@@ -436,7 +435,7 @@ struct GHead<Trailing: View>: View {
         HStack(alignment: .bottom, spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 Eyebrow(eyebrow)
-                Text(title).font(.serif(34)).tracking(-0.5).foregroundStyle(c.ink)
+                Text(title).font(.system(size: 34, weight: .bold, design: .serif)).tracking(-0.4).foregroundStyle(c.today.ink)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             trailing
@@ -461,7 +460,8 @@ struct Lbl: View {
     @Environment(\.pal) private var c
     let text: String
     var body: some View {
-        Text(text).font(.mono(10)).tracking(1.4).textCase(.uppercase).foregroundStyle(c.ink3)
+        // reads like the Today page's section labels ("To-Do (1)")
+        Text(text).font(.sans(15, .semibold)).foregroundStyle(c.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 18).padding(.bottom, 8)
     }
