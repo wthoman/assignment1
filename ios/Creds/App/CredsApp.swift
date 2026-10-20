@@ -93,11 +93,12 @@ struct MainView: View {
                         .accessibilityHidden(!visible)
                 }
             }
-            // the status-bar fade (content scrolls under it)
+            // the status-bar fade (content scrolls under it), in the showing page's colour
+            let top = m.stack.isEmpty && m.tab == .today ? c.today.bg : c.bg
             VStack {
-                LinearGradient(stops: [.init(color: c.bg, location: 0.7), .init(color: c.bg.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(stops: [.init(color: top, location: 0.7), .init(color: top.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     .frame(height: 8)
-                    .background(c.bg.ignoresSafeArea(edges: .top))
+                    .background(top.ignoresSafeArea(edges: .top))
                     .allowsHitTesting(false)
                 Spacer()
             }

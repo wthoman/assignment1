@@ -1,134 +1,128 @@
 import SwiftUI
 
-/// STRIP: Mon…Sun → index in the 7-day window (today = Wed).
-private let strip: [Int?] = [4, 5, 6, nil, nil, nil, nil]
+/// Days shown in the strip: the 7-day window (0…6, today = 6) plus three days ahead.
+private let stripDays = Array(0...9)
 
 struct TodayView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
 
     var body: some View {
+        let t = c.today
         Page { proxy in
-            GHead(eyebrow: Day.fmt(Seed.today, "EEEEMMMMd"), title: "Today") {
+            TodayHeader()
+            WeekStrip().padding(.top, 18)
+            StarHero().padding(.top, 26)
+            HStack(spacing: 12) {
+                Text(m.day == 6 ? "Today’s Tasks" : "\(Day.weekday(Day.date(m.day)))’s Tasks").font(.sans(24, .bold)).foregroundStyle(t.text)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 0)
+                Button { m.openCreate() } label: {
+                    Ico(.plus, 22).foregroundStyle(.white)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(t.red))
+                }
+                .buttonStyle(.press)
+                .accessibilityLabel("New habit")
+            }
+            .padding(.top, 22)
+            HabitList(readonly: m.day != 6, proxy: proxy).padding(.top, 10)
+        }
+        .background(t.bg.ignoresSafeArea())
+    }
+}
+
+/// "Hi Name!" with the selected date, plus notifications and profile.
+private struct TodayHeader: View {
+    @Environment(AppModel.self) private var m
+    @Environment(\.pal) private var c
+    var body: some View {
+        let t = c.today
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Hi \(m.person("me").name)!")
+                    .font(.system(size: 38, weight: .bold, design: .serif)).tracking(-0.4)
+                    .foregroundStyle(t.ink)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .accessibilityAddTraits(.isHeader)
+                HStack(spacing: 0) {
+                    Text(Day.fmt(Day.date(m.day), "MMMMdyyyy")).font(.sans(15, .medium)).foregroundStyle(t.muted)
+                    if m.day != 6 {
+                        Text(" · ").font(.sans(15, .medium)).foregroundStyle(t.muted)
+                        Button("Back to today") { withAnimation(.easeOut(duration: 0.2)) { m.selectDay(6) } }
+                            .font(.sans(15, .semibold)).foregroundStyle(t.red)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 8) {
                 IconBtn(badge: m.unreadCount, label: "Notifications", action: { m.push(.notifs) }) { Ico(.bell, 18) }
                 Button { m.push(.profile) } label: { Av(p: "me", size: 38) }
                     .buttonStyle(.press)
                     .accessibilityLabel("Profile")
             }
-            Text("Good evening, \(Text(m.person("me").name).fontWeight(.semibold).foregroundStyle(c.acc)).")
-                .font(.sans(15)).foregroundStyle(c.ink2)
-                .padding(.top, 4).padding(.horizontal, 2)
-            WeekStrip().padding(.top, 14)
-            ProgressCard().padding(.top, 10)
-            if m.day == 6 {
-                HStack {
-                    Spacer()
-                    IconBtn(acc: true, label: "New habit", action: { m.openCreate() }) { Ico(.plus, 18) }
-                }
-                .padding(.top, 14).padding(.bottom, 2)
-                HabitList(readonly: false, proxy: proxy)
-            } else {
-                PastDayHeader()
-                HabitList(readonly: true, proxy: proxy)
-            }
+            .padding(.top, 4)
         }
     }
 }
 
+/// Weekday labels over round date buttons; the selected day is filled red.
 private struct WeekStrip: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<7, id: \.self) { k in
-                let i = strip[k], fut = i == nil, sel = m.day == i
-                Button { if let i { withAnimation(.easeOut(duration: 0.2)) { m.selectDay(i) } } } label: {
-                    VStack(spacing: 4) {
-                        Text(["M", "T", "W", "T", "F", "S", "S"][k]).font(.mono(9.5)).tracking(0.76)
-                            .foregroundStyle(sel ? Brand.onWine.opacity(0.7) : c.ink3)
-                        ZStack {
-                            if let i {
-                                Ring(size: 30, stroke: 2.5, pct: m.dayRatio(i), track: sel ? .white.opacity(0.25) : c.line, color: sel ? Brand.onWine : c.acc)
+        let t = c.today
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    ForEach(stripDays, id: \.self) { i in
+                        let date = Day.date(i), sel = m.day == i, fut = i > 6, today = i == 6
+                        Button { withAnimation(.easeOut(duration: 0.2)) { m.selectDay(i) } } label: {
+                            VStack(spacing: 10) {
+                                Text(Day.fmt(date, "EEE")).font(.sans(15, sel ? .semibold : .regular))
+                                    .foregroundStyle(sel ? t.ink : t.muted)
+                                Text("\(Day.cal.component(.day, from: date))")
+                                    .font(.sans(16, sel || today ? .semibold : .regular))
+                                    .foregroundStyle(sel ? .white : today ? t.red : t.muted)
+                                    .frame(width: 46, height: 46)
+                                    .background(Circle().fill(sel ? t.red : t.circle))
                             }
-                            Text("\(5 + k)").font(.serif(17))
+                            .frame(width: 50)
+                            .contentShape(Rectangle())
                         }
-                        .frame(width: 30, height: 30)
-                        Circle().fill(i == 6 ? (sel ? Brand.onWine : c.acc) : .clear).frame(width: 4, height: 4)
-                    }
-                    .foregroundStyle(sel ? Brand.onWine : c.ink)
-                    .padding(.top, 6).padding(.bottom, 7)
-                    .frame(maxWidth: .infinity, minHeight: 62)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(sel ? c.acc : .clear))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(fut)
-                .opacity(fut ? 0.38 : 1)
-            }
-        }
-        .padding(6)
-        .card(0, radius: 16)
-    }
-}
-
-private struct ProgressCard: View {
-    @Environment(AppModel.self) private var m
-    @Environment(\.pal) private var c
-    var body: some View {
-        let req = m.required
-        let doneN = req.filter { m.isDone($0, "me") }.count
-        let pct = req.isEmpty ? 0 : Double(doneN) / Double(req.count)
-        HStack(spacing: 14) {
-            ZStack {
-                Ring(size: 56, stroke: 5, pct: pct, track: c.line, color: c.acc)
-                HStack(alignment: .firstTextBaseline, spacing: 1) {
-                    Text("\(doneN)").font(.sans(17, .bold))
-                    Text("/").font(.sans(13, .medium)).foregroundStyle(c.ink3)
-                    Text("\(req.count)").font(.sans(17, .bold))
-                }
-                .foregroundStyle(c.ink)
-            }
-            Text("Done today").font(.sans(16, .semibold)).foregroundStyle(c.ink).frame(maxWidth: .infinity, alignment: .leading)
-            VStack(spacing: 0) {
-                Eyebrow("Your week", size: 9).padding(.bottom, 6)
-                Dots7(states: (0..<7).map { i in let r = m.dayRatio(i); return r >= 1 ? .on : r > 0 ? .half : .off }, size: 13, radius: 4, gap: 4)
-                HStack(spacing: 4) {
-                    ForEach(0..<7, id: \.self) { i in
-                        Text(Day.narrow(Day.date(i))).font(.mono(9, i == 6 ? .medium : .regular))
-                            .foregroundStyle(i == 6 ? c.acc : c.ink3).frame(width: 13)
+                        .buttonStyle(.plain)
+                        .disabled(fut)
+                        .opacity(fut ? 0.55 : 1)
+                        .id(i)
+                        .accessibilityLabel("\(today ? "Today, " : "")\(Day.fmt(date, "EEEEMMMMd"))")
+                        .accessibilityAddTraits(sel ? .isSelected : [])
                     }
                 }
-                .padding(.top, 4)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 2)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Your week, " + (0..<7).map { i in
-                let r = m.dayRatio(i)
-                return "\(i == 6 ? "today" : Day.weekday(Day.date(i))) \(r >= 1 ? "all done" : r > 0 ? "some done" : "none done")"
-            }.joined(separator: ", "))
+            .padding(.horizontal, -16)
+            .onAppear { proxy.scrollTo(m.day, anchor: .center) }
         }
-        .card(v: 13, h: 16)
     }
 }
 
-private struct PastDayHeader: View {
-    @Environment(AppModel.self) private var m
+/// The star mascot standing on a soft oval shadow.
+private struct StarHero: View {
     @Environment(\.pal) private var c
     var body: some View {
-        let req = m.required
-        let done = req.filter { m.week($0, "me")[m.day] != 0 }.count
-        VStack(alignment: .leading, spacing: 3) {
-            Text(Day.weekday(Day.date(m.day))).font(.serif(23)).foregroundStyle(c.ink)
-            HStack(spacing: 0) {
-                Text("\(done) of \(req.count) done · ").font(.sans(12.5)).foregroundStyle(c.ink3)
-                Button("Back to today") { withAnimation(.easeOut(duration: 0.2)) { m.selectDay(6) } }
-                    .font(.sans(12.5, .semibold)).foregroundStyle(c.acc)
-            }
+        ZStack(alignment: .bottom) {
+            Ellipse().fill(c.today.shadow).frame(width: 276, height: 60)
+            Image("Star").resizable().scaledToFit()
+                .frame(width: 200)
+                .padding(.bottom, 26)
         }
-        .padding(.horizontal, 2).padding(.top, 22).padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+        .accessibilityHidden(true)
     }
 }
 
-/// Habits sorted by time, each timed one under its time label.
+/// To-Do and Completed sections, each sorted by time.
 private struct HabitList: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
@@ -141,17 +135,12 @@ private struct HabitList: View {
             if tb - ta != 0 { return tb - ta }
             return ta == 1 ? Day.tmin(a.time) - Day.tmin(b.time) : 0
         }
+        let done = { (h: Habit) in readonly ? m.week(h, "me")[m.day] != 0 : m.isDone(h, "me") }
+        let todo = sorted.filter { !done($0) }, completed = sorted.filter(done)
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, h in
-                if Day.hasTime(h) {
-                    HStack(spacing: 8) {
-                        Text(h.time).font(.mono(10.5)).tracking(1.26).textCase(.uppercase).foregroundStyle(c.ink2)
-                        Rectangle().fill(c.line).frame(height: 1)
-                    }
-                    .padding(.horizontal, 4).padding(.top, idx == 0 && !readonly ? 0 : 8).padding(.bottom, 4)
-                }
-                HabitCard(h: h, readonly: readonly, dayIdx: m.day).id(h.id)
-            }
+            section("To-Do", todo, empty: readonly ? "Nothing was left undone." : "All done for today.")
+            section("Completed", completed, empty: readonly ? "Nothing was checked off." : "Nothing checked off yet.")
+                .padding(.top, 14)
         }
         .onChange(of: m.anim) { _, id in
             guard let id else { return }
@@ -160,6 +149,20 @@ private struct HabitList: View {
                 withAnimation(.timingCurve(0.2, 0.9, 0.25, 1, duration: 0.32)) { m.anim = nil }
                 withAnimation { proxy.scrollTo(id) }
             }
+        }
+    }
+
+    @ViewBuilder private func section(_ title: String, _ list: [Habit], empty: String) -> some View {
+        let t = c.today
+        Text("\(title) (\(list.count))").font(.sans(18, .semibold)).foregroundStyle(t.section)
+            .padding(.horizontal, 2).padding(.bottom, 10)
+            .accessibilityAddTraits(.isHeader)
+        if list.isEmpty {
+            Text(empty).font(.sans(14)).foregroundStyle(t.muted).padding(.horizontal, 2).padding(.bottom, 6)
+        }
+        ForEach(list) { h in
+            HabitCard(h: h, readonly: readonly, dayIdx: m.day).id(h.id)
+                .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 }
@@ -172,45 +175,60 @@ struct HabitCard: View {
     var dayIdx = 6
 
     var body: some View {
+        let t = c.today
         let d = readonly ? m.week(h, "me")[dayIdx] != 0 : m.isDone(h, "me")
-        let ppl = m.peopleOf(h)
-        let w = m.week(h, "me")
-        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                CheckButton(done: d, readonly: readonly, name: h.name) { m.check(h.id) }
-                Button { m.openDetails(h.id) } label: {
-                    HStack(spacing: 11) {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(h.name).font(.sans(15, .semibold)).tracking(-0.075).lineLimit(1)
-                                .foregroundStyle(d ? c.ink2 : c.ink)
-                                .strikethrough(d, color: c.acc.opacity(0.6))
-                            HStack(spacing: 10) {
-                                Dots7(states: Dots7.from(w))
-                                if m.shared(h) {
-                                    AvStack(list: ppl.filter { $0 != "me" }, size: 22, max: 4, ok: { m.isDone(h, $0) })
-                                }
-                            }
-                            .frame(minHeight: 20)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        Tile(size: 48, on: d) { HIcon(h.ic, 28) }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(readonly)
-                .accessibilityHint("Opens details")
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        HStack(spacing: 16) {
+            HIcon(h.ic, 34).foregroundStyle(.white)
+                .frame(width: 60, height: 60)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(t.red))
+            VStack(alignment: .leading, spacing: 9) {
+                Text(h.name).font(.sans(16, .medium)).foregroundStyle(t.text).lineLimit(2)
+                DoneCircles(h: h, readonly: readonly, dayIdx: dayIdx)
             }
-            .padding(.leading, 14).padding(.trailing, 11).padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            CheckButton(done: d, readonly: readonly, name: h.name, tint: t.red, size: 30) { m.check(h.id) }
         }
+        .padding(.leading, 14).padding(.trailing, 16).padding(.vertical, 14)
+        .background(shape.fill(t.card))
         .contentShape(shape)
+        // the whole card opens the task; the check keeps its own tap
         .onTapGesture { if !readonly { m.openDetails(h.id) } }
-        .clipShape(shape)
-        .background(shape.fill(d ? c.accOn(0.05) : c.card).shadow(color: c.shadow.opacity(0.75), radius: 6, y: 5))
-        .overlay(shape.strokeBorder(d ? c.acc.opacity(0.55) : c.acc.opacity(0.14), lineWidth: d ? 1.2 : 1))
-        .padding(.bottom, 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: "Open details") { if !readonly { m.openDetails(h.id) } }
+        .padding(.bottom, 10)
         .animation(.easeOut(duration: 0.25), value: d)
+    }
+}
+
+/// One circle per person on the habit (you first): a red check once they're done.
+private struct DoneCircles: View {
+    @Environment(AppModel.self) private var m
+    @Environment(\.pal) private var c
+    let h: Habit
+    var readonly = false
+    var dayIdx = 6
+    private let maxShown = 6
+
+    var body: some View {
+        let t = c.today
+        let ppl = ["me"] + m.peopleOf(h).filter { $0 != "me" }
+        let isDone = { (p: String) in readonly ? m.week(h, p)[dayIdx] != 0 : m.isDone(h, p) }
+        let shown = Array(ppl.prefix(maxShown)), more = ppl.count - shown.count
+        HStack(spacing: 4) {
+            ForEach(shown, id: \.self) { p in
+                let on = isDone(p)
+                Circle().fill(on ? t.red : t.dot)
+                    .frame(width: 24, height: 24)
+                    .overlay { if on { Ico(.check, 11).foregroundStyle(.white) } }
+            }
+            if more > 0 {
+                Text("+\(more)").font(.sans(12, .semibold)).foregroundStyle(t.section).padding(.leading, 2)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(ppl.count == 1 ? (isDone("me") ? "Done" : "Not done")
+                            : "\(ppl.filter(isDone).count) of \(ppl.count) done")
     }
 }
 
@@ -220,22 +238,25 @@ struct CheckButton: View {
     let done: Bool
     var readonly = false
     let name: String
+    var tint: Color? = nil
+    var size: CGFloat = 26
     let action: () -> Void
     @State private var ring = false
 
     var body: some View {
+        let acc = tint ?? c.acc
         let face = ZStack {
-            Circle().fill(done ? c.acc : c.card)
-            if !done { Circle().strokeBorder(c.acc.opacity(0.6), lineWidth: 1.6) }
+            Circle().fill(done ? acc : c.card)
+            if !done { Circle().strokeBorder(acc.opacity(0.6), lineWidth: 1.6) }
             if done {
-                Ico(.check, 12).foregroundStyle(Brand.onWine)
+                Ico(.check, size * 0.46).foregroundStyle(Brand.onWine)
                     .transition(.asymmetric(insertion: .scale(scale: 1.7).combined(with: .opacity), removal: .opacity))
             }
         }
-        .frame(width: 26, height: 26)
+        .frame(width: size, height: size)
         .rotationEffect(.degrees(done ? -6 : 0))
         .background(
-            Circle().stroke(c.acc.opacity(ring ? 0 : 0.5), lineWidth: ring ? 14 : 0).scaleEffect(ring ? 1.5 : 1).opacity(ring ? 0 : 1)
+            Circle().stroke(acc.opacity(ring ? 0 : 0.5), lineWidth: ring ? 14 : 0).scaleEffect(ring ? 1.5 : 1).opacity(ring ? 0 : 1)
         )
         if readonly {
             face.opacity(done ? 1 : 0.5)
@@ -246,7 +267,7 @@ struct CheckButton: View {
                     withAnimation(.easeOut(duration: 0.6)) { ring = true }
                 }
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { action() }
-            } label: { face }
+            } label: { face.frame(width: 44, height: 44).contentShape(Circle()) }
             .buttonStyle(PressStyle(scale: 0.88))
             .accessibilityLabel(done ? "Undo check-in for \(name)" : "Check off \(name)")
         }

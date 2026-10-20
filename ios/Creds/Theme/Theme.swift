@@ -41,8 +41,26 @@ struct Palette {
 
     static func of(_ t: ThemeName) -> Palette { t == .stage ? .stage : .paper }
 
+    /// The Today page's own warm look.
+    var today: TodayLook { isStage ? .stage(self) : .paper }
+
     /// color-mix(in srgb, acc X%, card)
     func accOn(_ pct: Double, _ base: Color? = nil) -> Color { Color.mix(acc, base ?? card, pct) }
+}
+
+/// Today page colours: warm pale page, blush cards, brick-red accents.
+struct TodayLook {
+    let bg, ink, text, muted, section, card, circle, dot, shadow, red: Color
+
+    static let paper = TodayLook(
+        bg: Color(hex: 0xFCF9F7), ink: Color(hex: 0x332620), text: Color(hex: 0x141010), muted: Color(hex: 0x99908E),
+        section: Color(hex: 0x746764), card: Color(hex: 0xEEE7E4), circle: .white, dot: Color(hex: 0xDED4CF),
+        shadow: Color(hex: 0xEEE7E4), red: Color(hex: 0x931E14))
+
+    static func stage(_ c: Palette) -> TodayLook {
+        TodayLook(bg: c.bg, ink: c.ink, text: c.ink, muted: c.ink3, section: c.ink2, card: c.card2, circle: c.card,
+                  dot: c.line2, shadow: c.card2, red: c.acc)
+    }
 }
 
 enum Brand {
