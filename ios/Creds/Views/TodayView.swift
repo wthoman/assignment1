@@ -194,7 +194,7 @@ struct HabitCard: View {
                             .frame(minHeight: 20)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Tile(size: 42, on: d) { HIcon(h.ic, 22) }
+                        Tile(size: 48, on: d) { HIcon(h.ic, 28) }
                     }
                     .contentShape(Rectangle())
                 }
@@ -309,7 +309,7 @@ struct DoneTodayLabel: View {
     }
 }
 
-/// Today's photos row: you first, then friends (done first, by time).
+/// Today's photos, three to a row: you first, then friends (done first, by time).
 struct TodayStrip: View {
     @Environment(AppModel.self) private var m
     let h: Habit
@@ -319,7 +319,7 @@ struct TodayStrip: View {
             if db - da != 0 { return db - da }
             return da == 1 ? Day.tmin(h.mem[a]?.done ?? "") - Day.tmin(h.mem[b]?.done ?? "") : 0
         }
-        Bleed(inset: 16, spacing: 8) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3), spacing: 14) {
             ForEach(["me"] + others, id: \.self) { p in PersonTile(h: h, p: p) }
         }
     }
@@ -340,7 +340,7 @@ struct PersonTile: View {
                 ZStack {
                     if d && m.hasPhoto(h, p) {
                         if me, let item = m.storyItem(for: h.id), let img = m.storyImage(item) {
-                            Image(uiImage: img).resizable().scaledToFill().frame(width: 78, height: 98).clipped()
+                            Image(uiImage: img).resizable().scaledToFill()
                         } else {
                             PhotoFill(floorCell: 16, floorHeight: 40, floorOpacity: 0.28, center: UnitPoint(x: 0.5, y: 0.3))
                             HIcon(h.ic, 26, 1.3).foregroundStyle(Color(red: 1, green: 236 / 255, blue: 226 / 255).opacity(0.88))
@@ -370,20 +370,29 @@ struct PersonTile: View {
                         .foregroundStyle(c.ink3)
                     }
                 }
-                .frame(width: 78, height: 98)
+                // fixed portrait shape at whatever width the column gives
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .aspectRatio(78.0 / 98.0, contentMode: .fit)
                 .clipShape(shape)
                 .overlay {
                     if d && !m.hasPhoto(h, p) { shape.strokeBorder(c.line, lineWidth: 1) }
                     else if !d { shape.strokeBorder(me ? c.acc : c.line2, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
                 }
-                Text(me ? "You" : m.person(p).name).font(.sans(12, .semibold)).foregroundStyle(!d && !me ? c.ink3 : c.ink)
-                    .lineLimit(1).frame(maxWidth: 78, alignment: .leading).padding(.top, 6)
-                Text(d ? (h.mem[p]?.done ?? "") : "Not yet").font(.sans(10.5)).foregroundStyle(c.ink3).lineLimit(1)
+                Text(m.person(p).full).font(.sans(12.5, .semibold)).foregroundStyle(!d && !me ? c.ink3 : c.ink)
+                    .lineLimit(1).truncationMode(.tail).padding(.top, 6)
+                Text(d ? photoTime : "Not yet").font(.sans(11)).foregroundStyle(c.ink3).lineLimit(1).padding(.top, 1)
             }
-            .frame(width: 78, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
         }
         .buttonStyle(.press)
         .disabled(!d && !me)
+    }
+
+    /// When the photo was taken: your saved photo's time, otherwise the check-in time.
+    private var photoTime: String {
+        if p == "me", m.hasPhoto(h, p), let item = m.storyItem(for: h.id) { return item.time }
+        return h.mem[p]?.done ?? ""
     }
 }
 

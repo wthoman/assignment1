@@ -14,13 +14,15 @@ func hashN(_ s: String) -> Int { s.utf16.reduce(0) { $0 + Int($1) } }
 struct DetailsSheet: View {
     @Environment(AppModel.self) private var m
     @Environment(\.pal) private var c
+    /// The month calendar inside "Your streak" starts hidden.
+    @State private var showCal = false
     var body: some View {
         if let s = m.sheet, let h = m.H(s.id) {
             let g = m.G(h.group), d = m.isDone(h, "me")
             VStack(spacing: 0) {
                 SheetHead {
                     HStack(spacing: 12) {
-                        Tile(size: 60, on: d) { HIcon(h.ic, 31) }
+                        Tile(size: 66, on: d) { HIcon(h.ic, 38) }
                         VStack(alignment: .leading, spacing: 4) {
                             Text(h.name).font(.serif(28)).foregroundStyle(c.ink).lineLimit(2)
                             Text("\(g?.name ?? "Just me") · \(h.freq) · \(h.time)").font(.sans(12.5)).foregroundStyle(c.ink2)
@@ -28,27 +30,6 @@ struct DetailsSheet: View {
                     }
                 }
                 SheetBody {
-                    VStack(alignment: .leading, spacing: 0) {
-                        BlkHead(left: "Your streak") { DoneTodayLabel(done: d) }
-                        StreakBlock(h: h)
-                    }
-                    .card().padding(.top, 4)
-                    VStack(alignment: .leading, spacing: 0) {
-                        BlkHead(left: m.shared(h) ? "Today’s photos" : "Today") {
-                            Eyebrow(m.shared(h) ? "\(m.doneCount(h)) of \(m.peopleOf(h).count) done" : "Only you")
-                        }
-                        TodayStrip(h: h)
-                    }
-                    .blk()
-                    VStack(alignment: .leading, spacing: 0) {
-                        MonthGrid(h: h)
-                        HStack(spacing: 14) {
-                            HStack(spacing: 6) { Circle().fill(c.acc).frame(width: 9, height: 9); Text("Done") }
-                            HStack(spacing: 6) { Circle().strokeBorder(c.line2, lineWidth: 1).frame(width: 9, height: 9); Text("Missed") }
-                        }
-                        .font(.sans(12)).foregroundStyle(c.ink2).padding(.top, 10)
-                    }
-                    .card().blk()
                     HStack(spacing: 8) {
                         if d {
                             if h.mem["me"]?.proof == true {
@@ -65,9 +46,49 @@ struct DetailsSheet: View {
                             Button { m.makeGroup(h.id) } label: { Ico(.invite); Text("Add friends") }.buttonStyle(.btn(.line))
                         }
                     }
-                    .padding(.top, 16)
+                    .padding(.top, 4)
+                    VStack(alignment: .leading, spacing: 0) {
+                        BlkHead(left: "Your streak") { DoneTodayLabel(done: d) }
+                        StreakBlock(h: h)
+                        Button { withAnimation(.easeOut(duration: 0.25)) { showCal.toggle() } } label: {
+                            HStack(spacing: 6) {
+                                Ico(.cal, 15)
+                                Text(showCal ? "Hide calendar" : "Show calendar")
+                                Spacer(minLength: 0)
+                                Ico(.chev, 14).rotationEffect(.degrees(showCal ? 180 : 0))
+                            }
+                            .font(.sans(13.5, .semibold)).foregroundStyle(c.acc)
+                            .padding(.horizontal, 12).frame(height: 40)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(c.acc.opacity(0.08)))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.press)
+                        .padding(.top, 14)
+                        .accessibilityLabel(showCal ? "Hide calendar" : "Show calendar")
+                        .accessibilityAddTraits(showCal ? .isSelected : [])
+                        if showCal {
+                            VStack(alignment: .leading, spacing: 0) {
+                                MonthGrid(h: h)
+                                HStack(spacing: 14) {
+                                    HStack(spacing: 6) { Circle().fill(c.acc).frame(width: 9, height: 9); Text("Done") }
+                                    HStack(spacing: 6) { Circle().strokeBorder(c.line2, lineWidth: 1).frame(width: 9, height: 9); Text("Missed") }
+                                }
+                                .font(.sans(12)).foregroundStyle(c.ink2).padding(.top, 10)
+                            }
+                            .padding(.top, 14)
+                            .transition(.opacity)
+                        }
+                    }
+                    .card().blk()
+                    VStack(alignment: .leading, spacing: 0) {
+                        BlkHead(left: m.shared(h) ? "Today’s photos" : "Today") {
+                            Eyebrow(m.shared(h) ? "\(m.doneCount(h)) of \(m.peopleOf(h).count) done" : "Only you")
+                        }
+                        TodayStrip(h: h)
+                    }
+                    .blk()
                     if g == nil {
-                        Button("Delete habit") { m.deleteHabit(h.id) }.buttonStyle(Btn(kind: .ghost, fg: c.acc)).padding(.top, 6)
+                        Button("Delete habit") { m.deleteHabit(h.id) }.buttonStyle(Btn(kind: .ghost, fg: c.acc)).padding(.top, 10)
                     }
                 }
             }
@@ -108,31 +129,45 @@ struct MonthGrid: View {
                     .accessibilityLabel("Next month")
             }
             .padding(.bottom, 8)
-            let cols = Array(repeating: GridItem(.flexible(), spacing: 3), count: 7)
-            LazyVGrid(columns: cols, spacing: 3) {
-                ForEach(Array(["M", "T", "W", "T", "F", "S", "S"].enumerated()), id: \.offset) { _, l in
-                    Text(l).font(.mono(9.5)).foregroundStyle(c.ink3).padding(.bottom, 4)
+            // explicit week rows: blanks before day 1 put it under its weekday, blanks after fill the last row
+            let cells: [Int?] = Array(repeating: nil, count: lead) + (1...days).map { $0 }
+            let padded = cells + Array(repeating: nil, count: (7 - cells.count % 7) % 7)
+            VStack(spacing: 3) {
+                HStack(spacing: 3) {
+                    ForEach(0..<7, id: \.self) { i in
+                        Text(String(Array("MTWTFSS")[i])).font(.mono(9.5)).foregroundStyle(c.ink3)
+                            .frame(maxWidth: .infinity).padding(.bottom, 4)
+                    }
                 }
-                ForEach(0..<lead, id: \.self) { i in Color.clear.frame(height: 40).id("lead\(i)") }
-                ForEach(1...days, id: \.self) { d in
-                    let date = Day.cal.date(from: DateComponents(year: y, month: mo + 1, day: d))!
-                    let fut = date > Seed.today, isToday = date == Seed.today
-                    let v = fut ? nil : monthDone(y, mo, d)
-                    let done = v == 1, miss = !fut && !done && date < Seed.today
-                    let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    Text("\(d)")
-                        .font(.sans(12.5, isToday ? .bold : .medium))
-                        .foregroundStyle(done ? Brand.onWine : fut ? c.ink3 : c.ink)
-                        .frame(maxWidth: .infinity).frame(height: 40)
-                        .background(shape.fill(done ? c.acc : .clear))
-                        .overlay {
-                            if isToday && !done { shape.strokeBorder(c.ink, lineWidth: 1.6) }
-                            else if miss { shape.strokeBorder(c.line2, lineWidth: 1) }
+                ForEach(0..<padded.count / 7, id: \.self) { row in
+                    HStack(spacing: 3) {
+                        ForEach(0..<7, id: \.self) { col in
+                            if let d = padded[row * 7 + col] { dayCell(y, mo, d) } else { Color.clear.frame(maxWidth: .infinity).frame(height: 40) }
                         }
-                        .opacity(fut ? 0.5 : 1)
+                    }
                 }
             }
+            .id("\(y)-\(mo)")
         }
+    }
+
+    private func dayCell(_ y: Int, _ mo: Int, _ d: Int) -> some View {
+        let date = Day.cal.date(from: DateComponents(year: y, month: mo + 1, day: d))!
+        let fut = date > Seed.today, isToday = date == Seed.today
+        let v = fut ? nil : monthDone(y, mo, d)
+        let done = v == 1, miss = !fut && !done && date < Seed.today
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        return Text("\(d)")
+            .font(.sans(12.5, isToday ? .bold : .medium))
+            .foregroundStyle(done ? Brand.onWine : fut ? c.ink3 : c.ink)
+            .frame(maxWidth: .infinity).frame(height: 40)
+            .background(shape.fill(done ? c.acc : .clear))
+            .overlay {
+                if isToday && !done { shape.strokeBorder(c.ink, lineWidth: 1.6) }
+                else if miss { shape.strokeBorder(c.line2, lineWidth: 1) }
+            }
+            .opacity(fut ? 0.5 : 1)
+            .accessibilityLabel("\(Day.fmt(date, "MMMMd")), \(fut ? "upcoming" : done ? "done" : "missed")")
     }
 }
 
@@ -222,7 +257,7 @@ struct IconPicker: View {
     var body: some View {
         Bleed(inset: 18, spacing: 6) {
             ForEach(Array(HabitIcon.all.prefix(12)), id: \.self) { k in
-                Button { pick(k) } label: { Tile(size: 50, on: selected == k, rotate: false) { HIcon(k, 25) } }
+                Button { pick(k) } label: { Tile(size: 58, on: selected == k, rotate: false) { HIcon(k, 32) } }
                     .buttonStyle(.press)
                     .accessibilityLabel(k)
             }

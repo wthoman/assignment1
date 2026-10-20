@@ -210,15 +210,15 @@ private struct InviteCard: View {
     }
 }
 
-/// Small square group icon (.gic).
+/// Square group icon (.gic): red on gray, like Tile.
 struct GroupIcon: View {
     @Environment(\.pal) private var c
     let ic: String
     var body: some View {
-        HIcon(ic, 16).foregroundStyle(c.ink2)
-            .frame(width: 28, height: 28)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(c.bg2))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(c.line, lineWidth: 1))
+        HIcon(ic, 23).foregroundStyle(c.acc)
+            .frame(width: 38, height: 38)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(c.tile))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(c.line.opacity(0.6), lineWidth: 1))
     }
 }
 
@@ -336,7 +336,7 @@ private struct CommunityRow: View {
     var body: some View {
         let f = cm.friends.filter { m.friends.contains($0) }
         HStack(spacing: 12) {
-            Tile { HIcon(cm.ic, 20) }
+            Tile(size: 48) { HIcon(cm.ic, 28) }
             VStack(alignment: .leading, spacing: 0) {
                 Text(cm.name).font(.sans(15, .semibold)).foregroundStyle(c.ink)
                 Text("\(cm.size.formatted()) members · \(cm.pct)% today").font(.sans(12)).foregroundStyle(c.ink3).padding(.top, 2)
@@ -468,7 +468,7 @@ struct GroupPageView: View {
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 12) {
-                        Tile(size: 60, on: true) { HIcon(info.ic, 31) }
+                        Tile(size: 66, on: true) { HIcon(info.ic, 38) }
                         VStack(alignment: .leading, spacing: 4) {
                             Text(info.name).font(.serif(30)).foregroundStyle(c.ink)
                             Text(info.type == "community" ? "\((info.size ?? 0).formatted()) members · open community" : "\(info.members.count) members")
@@ -515,7 +515,7 @@ struct GroupPageView: View {
                         ForEach(Array(info.fin.enumerated()), id: \.offset) { i, f in
                             Divided(first: i == 0) {
                                 HStack(spacing: 12) {
-                                    Tile(size: 40, on: f.ok) { Ico(.trophy, 20) }
+                                    Tile(size: 46, on: f.ok) { Ico(.trophy, 25) }
                                     TwoLine(title: f.t, sub: f.r, titleSize: 14)
                                     if f.ok {
                                         Stamp(size: 40, color: c.acc) { Text("Done").font(.mono(7, .medium)) }.rotationEffect(.degrees(-10))
@@ -668,7 +668,7 @@ struct SetRow<Trailing: View>: View {
     var body: some View {
         Divided(first: first, vpad: 11) {
             HStack(spacing: 12) {
-                Tile(size: 36, rotate: false, radiusScale: 0.95) { Ico(icon, (iconSize ?? icon.defaultSize) * 1.2) }
+                Tile(size: 42, rotate: false, radiusScale: 0.95) { Ico(icon, (iconSize ?? icon.defaultSize) * 1.35) }
                 TwoLine(title: title, sub: sub, titleSize: 15, titleColor: titleColor)
                 trailing
             }

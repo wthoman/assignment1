@@ -179,7 +179,7 @@ private struct GoalsStep: View {
                     let on = m.obGoals.contains(g.id)
                     Button { m.toggleGoal(g.id) } label: {
                         HStack(spacing: 10) {
-                            Tile(size: 40, on: on) { HIcon(g.ic, 22) }
+                            Tile(size: 46, on: on) { HIcon(g.ic, 27) }
                             Text(g.l).font(.sans(14, .semibold)).foregroundStyle(c.ink)
                             Spacer(minLength: 0)
                         }
