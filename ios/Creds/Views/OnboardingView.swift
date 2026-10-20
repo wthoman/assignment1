@@ -46,9 +46,14 @@ private struct Splash: View {
             VStack(spacing: 0) {
                 Spacer()
                 Text("Now showing").font(.mono(10.5)).tracking(3.4).textCase(.uppercase).foregroundStyle(Brand.gold2)
-                Text("Creds").font(.serif(96)).italic().tracking(-2.5).foregroundStyle(Brand.cream)
+                // the logo is drawn red on transparent; tinted cream so it reads on the dark stage
+                Image("Logo").renderingMode(.template).resizable().scaledToFit()
+                    .foregroundStyle(Brand.cream)
+                    .frame(maxWidth: 300)
                     .shadow(color: .black.opacity(0.5), radius: 20, y: 8)
-                    .padding(.top, 14).padding(.bottom, 18)
+                    .padding(.top, 22).padding(.bottom, 26)
+                    .accessibilityLabel("Creds")
+                    .accessibilityAddTraits(.isHeader)
                 Text("Habits are easier with an audience. Show up, check in, and keep each other going.")
                     .font(.sans(15)).lineSpacing(4).foregroundStyle(Color(hex: 0xF0DCD6))
                     .multilineTextAlignment(.center).frame(maxWidth: 270)
