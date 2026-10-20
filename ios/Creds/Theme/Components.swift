@@ -139,11 +139,13 @@ extension ButtonStyle where Self == Btn {
 /// Plain press feedback for custom tappable rows.
 struct PressStyle: ButtonStyle {
     var scale: CGFloat = 1
+    /// Dim slightly while pressed; off where a label must never look like it's fading.
+    var dims = true
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .contentShape(Rectangle())
             .scaleEffect(configuration.isPressed ? scale : 1)
-            .opacity(configuration.isPressed ? 0.85 : 1)
+            .opacity(configuration.isPressed && dims ? 0.85 : 1)
     }
 }
 

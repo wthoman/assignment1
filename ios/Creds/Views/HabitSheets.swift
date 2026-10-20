@@ -80,7 +80,24 @@ struct StreakWeek: View {
     let h: Habit
     @State private var open = true
     /// The month calendar starts hidden each time the task opens.
+    /// `calOpen` drives the button (changes at once); `showCal` keeps the calendar in the layout until it has faded out.
+    @State private var calOpen = false
     @State private var showCal = false
+    @State private var calOpacity = 0.0
+
+    private func toggleCalendar() {
+        calOpen.toggle()
+        if calOpen {
+            calOpacity = 0
+            showCal = true
+            // next frame, so the calendar is on screen at 0 before fading up
+            DispatchQueue.main.async { withAnimation(.easeInOut(duration: 0.2)) { calOpacity = 1 } }
+        } else {
+            withAnimation(.easeOut(duration: 0.12)) { calOpacity = 0 } completion: {
+                if !calOpen { showCal = false }
+            }
+        }
+    }
 
     var body: some View {
         let t = c.today, n = m.streak(h, "me")
@@ -121,26 +138,29 @@ struct StreakWeek: View {
                 DayLegend()
                     .padding(.top, 14)
                     .transition(.opacity)
-                Button { withAnimation(.easeOut(duration: 0.25)) { showCal.toggle() } } label: {
+                Button { toggleCalendar() } label: {
                     HStack(spacing: 8) {
                         Ico(.cal, 18)
-                        Text(showCal ? "Hide calendar" : "Show calendar").font(.sans(16, .medium))
+                        Text(calOpen ? "Hide calendar" : "Show calendar").font(.sans(16, .medium))
                         Spacer(minLength: 0)
-                        Ico(.chev, 16).rotationEffect(.degrees(showCal ? 180 : 0))
+                        Ico(.chev, 16).rotationEffect(.degrees(calOpen ? 180 : 0))
                     }
+                    // the label swaps instantly, never cross-fades
+                    .transaction { $0.animation = nil }
                     .foregroundStyle(c.today.red)
                     .padding(.horizontal, 14).frame(height: 46)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(c.today.card))
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.press)
+                .buttonStyle(PressStyle(dims: false))
                 .padding(.top, 16)
-                .accessibilityLabel(showCal ? "Hide calendar" : "Show calendar")
+                .accessibilityLabel(calOpen ? "Hide calendar" : "Show calendar")
                 .accessibilityHint("Month by month history for this task")
                 if showCal {
                     TaskCalendar(h: h)
+                        .opacity(calOpacity)
                         .padding(.top, 16)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(.identity)
                 }
             }
         }
@@ -168,7 +188,7 @@ struct TaskCalendar: View {
         let padded = cells + Array(repeating: nil, count: (7 - cells.count % 7) % 7)
         VStack(spacing: 0) {
             HStack {
-                Button { withAnimation(.easeOut(duration: 0.2)) { offset -= 1 } } label: {
+                Button { offset -= 1 } label: {
                     Ico(.left, 18).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .disabled(!canBack).opacity(canBack ? 1 : 0.3)
@@ -176,7 +196,7 @@ struct TaskCalendar: View {
                 Spacer()
                 Text(Day.fmt(first, "MMMMyyyy")).font(.system(size: 22, weight: .bold, design: .serif)).foregroundStyle(t.ink)
                 Spacer()
-                Button { withAnimation(.easeOut(duration: 0.2)) { offset += 1 } } label: {
+                Button { offset += 1 } label: {
                     Ico(.right, 18).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .disabled(!canForward).opacity(canForward ? 1 : 0.3)
@@ -200,16 +220,16 @@ struct TaskCalendar: View {
                     }
                 }
             }
-            .id(offset)
-            .transition(.opacity)
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(t.card.opacity(0.45)))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.mix(t.card, t.bg, 0.45)))
     }
 
+    /// The date inside the same marker as the week row: check = done, cross = missed, moon in a dashed ring = rest day.
     private func cell(_ d: Date) -> some View {
         let t = c.today, k = m.dayMark(h, d), today = Day.cal.isDate(d, inSameDayAs: Seed.today)
         let n = Day.cal.component(.day, from: d)
+        let missedInk = Color(hex: 0x6E625F)
         return ZStack {
             switch k {
             case .done: Circle().fill(t.red)
@@ -218,12 +238,19 @@ struct TaskCalendar: View {
             case .pending: Circle().strokeBorder(t.ink.opacity(0.55), lineWidth: 1.6)
             case .upcoming, .none: Color.clear
             }
-            Text("\(n)")
-                .font(.sans(15, today ? .bold : k == .done ? .semibold : .regular))
-                .foregroundStyle(k == .done ? .white : k == .missed ? Color(hex: 0x6E625F) : k == .upcoming || k == .none ? t.muted.opacity(0.6) : t.muted)
-                .strikethrough(k == .missed, color: Color(hex: 0x6E625F))
+            VStack(spacing: 0) {
+                Text("\(n)")
+                    .font(.sans(13, today || k == .done ? .bold : .medium))
+                    .foregroundStyle(k == .done ? .white : k == .missed ? missedInk : k == .upcoming || k == .none ? t.muted.opacity(0.6) : t.muted)
+                switch k {
+                case .done: Ico(.check, 10).foregroundStyle(.white)
+                case .missed: Ico(.x, 9).foregroundStyle(missedInk)
+                case .rest: Ico(.moon, 10).foregroundStyle(t.muted)
+                default: EmptyView()
+                }
+            }
         }
-        .frame(width: 40, height: 40)
+        .frame(width: 42, height: 42)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(Day.fmt(d, "EEEEMMMMd")), \(k.label)")
